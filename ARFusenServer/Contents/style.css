@@ -1,0 +1,144 @@
+﻿/* 共通スタイル 基本全ページで読み込むことを前提とします。 */
+
+*{
+	-webkit-box-sizing: border-box; /* ボーダー・パディングを内側扱いで計算する。 */
+	-moz-box-sizing: border-box;	/* 全タグ既定指定するのでパーツのレイアウト時注意。 */
+	-o-box-sizing: border-box;		/* 〃 */
+	-ms-box-sizing: border-box;		/* 〃 */
+	box-sizing: border-box;			/* 〃 */
+	margin: 0; padding: 0;
+}
+
+html {
+    height: 100%;
+    background: linear-gradient(to bottom, white 0%,#fcfcff 100%);
+    background-attachment: fixed;
+}
+body{
+	font-family: 'Hiragino Kaku Gothic ProN', 'メイリオ', meiryo, sans-serif;
+	font-size: 14px;
+}
+input {
+    font-family: 'Hiragino Kaku Gothic ProN', 'メイリオ', meiryo, sans-serif;
+    font-size: 14px;
+}
+
+/* テキストボックスにIEで表示される×ボタン */
+input::-ms-clear {
+    visibility: collapse;
+}
+
+/* フッター */
+footer{
+	position: fixed;
+	width: 100%;
+    max-height: 100px;
+	bottom: 0;
+	padding-left: 10px;
+	background: lightgray;
+	color: black;
+}
+footer.message{
+    visibility: visible;
+}
+footer.error{
+	visibility: visible;
+	animation: common-footer-keyframes 1s ease-in infinite;
+    background: red;
+	color: white;
+}
+@keyframes common-footer-keyframes{
+	from{ opacity:1; }
+	to{ opacity:0.2; }
+}
+
+/* ダイアログ関係 */
+div#dialogScreen{
+    visibility:hidden;
+    position:fixed;
+    top:0; left:0;
+    width:100%; height:100%;
+    background: rgba(0,0,0,0.3);
+    opacity:0;
+    transition-property:opacity;
+    transition:0.3s ease;
+    z-index:10;
+}
+div#dialogScreen.on{
+    visibility:visible;
+    opacity:1;
+}
+
+div#dialogBank{
+}
+
+.dialog{
+    display:block;
+    visibility:hidden;
+    border:solid 1px gray;
+	background: #FCFCFC;
+    position:absolute;
+    top:48%; left:50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 5px 5px 5px rgba(0,0,0,0.3);
+    transition: 0.3s ease;
+    z-index:11;
+}
+.dialog.on{
+    top: 50%;
+    visibility:visible;
+    animation: common-dialog-keyframe 0.3s ease 0s;
+}
+@keyframes common-dialog-keyframe{
+    0% { top:48%; }
+    100% { top: 50%; }
+}
+/*↑余分なアニメ定義に見えるがIEとその他で同じ動きにするのに必要
+    (visibilityをtransitionした時の領域計算の差?) */
+
+.messagebox{
+}
+
+.messagebox .button{
+    display: inline-block;
+    user-select: none;
+    -ms-user-select: none;
+    cursor:pointer;
+    border-radius: 2px;
+    background: linear-gradient(to bottom, #e8eff7 0%,#d8dfe7 100%);
+    border: 1px solid gray;
+    border-color: darkgray darkgray dimgray darkgray;
+    margin: 0 20px;
+    width:100px;
+}
+.messagebox .button:active {
+    background: #EDEDFF;
+}
+
+/* ぐるぐる */
+.spin{
+    display:block;
+	border-radius: 50%;
+	width: 100px;
+	height: 100px;
+	border: solid 20px;
+	border-color: rgba(255 ,255 ,255, 0.6) #00bfc6 rgba(255 ,255 ,255, 0.6) rgba(255 ,255 ,255, 0.6);
+	animation: common-spin-keyframes 0.7s linear infinite;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+
+.spin.stop{
+    /* たとえ非表示でもanimation付けてると遅い */
+    visibility:hidden;
+    animation:none;
+}
+
+@keyframes common-spin-keyframes{
+	0%{
+		transform: rotate(0deg);
+	}
+	100%{
+		transform: rotate(360deg);
+	}
+}

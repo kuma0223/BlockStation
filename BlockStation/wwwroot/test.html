@@ -1,0 +1,170 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <title>サービス呼び出しテスト用ページ</title>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+
+    <style type="text/css">
+        html {
+            background: linear-gradient(to bottom, #f5ffff, #90bced 100%);
+            background-attachment: fixed;
+        }
+        * {
+            font-family: Meiryo;
+            font-size: 16px;
+        }
+    </style>
+</head>
+
+<body>
+    <div>
+        <div>URL</div>
+        <div>
+            <input type="text" style="width: 600px;" id="urltext" value="api/" />
+        </div>
+        <div>Header</div>
+        <div>
+            <textarea style="margin-top: 5px; height: 5em; width: 600px;" id="headtext"></textarea>
+        </div>
+        <div>Body</div>
+        <div>
+            <textarea style="margin-top: 5px; height: 10em; width: 600px;" id="bodytext"></textarea>
+        </div>
+        <div style="margin-top: 5px;">
+            <button onclick="GetClick()">GET</button>
+            <button onclick="PostClick()">POST</button>
+            <button onclick="PutClick()">PUT</button>
+        </div>
+
+        <div style="margin-top: 10px;">
+            <div>Response Code</div>
+            <div id="status" style="background: white; width:300px;">&nbsp;</div>
+            <div>Response Body</div>
+            <div id="response" style="background: white; width:600px; height: 20em"></div>
+        </div>
+    </div>
+
+    <footer></footer>
+
+    <script type="text/javascript">
+        onload = function () {
+            document.getElementById("urltext").value = localStorage.getItem("urltext");
+            document.getElementById("bodytext").value = localStorage.getItem("bodytext");
+            document.getElementById("headtext").value = localStorage.getItem("headtext");
+        }
+
+        function GetClick() {
+            var url = document.getElementById("urltext").value;
+            var body = document.getElementById("bodytext").value;
+            var head = document.getElementById("headtext").value;
+            localStorage.setItem("urltext", url);
+            localStorage.setItem("bodytext", body);
+            localStorage.setItem("headtext", head);
+
+            var param = {
+                type: "GET",
+                url: url,
+                contentType: "application/json",
+                callback: function (event) {
+                    document.getElementById("status").textContent = event.status;
+                    document.getElementById("response").textContent = event.response;
+                }
+            }
+            ajax.ajax(param, JSON.parse(head=="" ? "{}" : head))
+        }
+
+        function PostClick() {
+            var url = document.getElementById("urltext").value;
+            var body = document.getElementById("bodytext").value;
+            var head = document.getElementById("headtext").value;
+            localStorage.setItem("urltext", url);
+            localStorage.setItem("bodytext", body);
+            localStorage.setItem("headtext", head);
+
+            var param = {
+                type: "POST",
+                data: JSON.parse(body),
+                url: url,
+                contentType: "application/json",
+                callback: function (event) {
+                    document.getElementById("status").textContent = event.status;
+                    document.getElementById("response").textContent = event.response;
+                }
+            }
+            ajax.ajax(param, JSON.parse(head=="" ? "{}" : head))
+        }
+
+        this.ajax = new function(){
+            var DefaultParam = {
+                type: "", //指定必須 GET POSTなど
+                url:"",   //指定必須
+                data:{},
+                timeout:10000,
+                contentType:"application/x-www-form-urlencoded; charset=UTF-8",
+                callback:function(event){}
+            }
+
+            /**
+             * httpリクエストを送信し応答を取得します。
+             * パラメータはDefaultParamを参照してください。
+             */
+            this.ajax = function(param, exheader){
+                try{
+                    var req = new XMLHttpRequest();
+
+                    req.onload = onload;
+                    req.onerror = onerror;
+                    req.onabort = onabort;
+                    req.ontimeout = ontimeout;
+
+                    req.open(param.type, param.url);
+
+                    req.timeout = (param.timeout !== undefined ? param.timeout : DefaultParam.timeout);
+                    req.setRequestHeader("Content-Type",
+                        param.contentType!==undefined ? param.contentType : DefaultParam.contentType);
+
+                    if (exheader != undefined) {
+                        Object.keys(exheader).forEach(function (x) {
+                            req.setRequestHeader(x, exheader[x]);
+                        })
+                    }
+
+                    req.send(JSON.stringify(param.data!==undefined ? param.data : DefaultParam.data));
+                }catch(e){
+                    beCallback(false, "通信を開始できませんでした。" + e.message);
+                }
+                function onload(){
+                    if(req.status == 200){
+                        beCallback(true, "");
+                    }else{
+                        beCallback(false, "通信に失敗しました。" + req.status + "/" + req.statusText);
+                    }
+                }
+                function onerror(e){
+                    beCallback(false, "通信異常が発生しました。");
+                }
+                function onabort(){
+                    beCallback(false, "通信中に割り込みが発生しました。");
+                }
+                function ontimeout(){
+                    beCallback(false, "通信がタイムアウトしました。");
+                }
+
+                function beCallback(success, message){
+                    var callback = (param.callback !== undefined ? param.callback : DefaultParam.callback);
+                    var event = {
+                        success:success,
+                        response:req.response,
+                        responseType:req.responseType,
+                        status:req.status,
+                        message:message
+                    };
+                    callback(event);
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>

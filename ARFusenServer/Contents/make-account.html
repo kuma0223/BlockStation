@@ -1,0 +1,151 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="robots" content="noindex" />
+
+    <script src="common.js" type="text/javascript"></script>
+    <script src="setting.js" type="text/javascript"></script>
+    <link href="style.css" rel="stylesheet" type="text/css" />
+
+    <style type="text/css">
+        #panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 350px;
+            height: 400px;
+            margin: 100px auto 0 auto;
+            background: white;
+            box-shadow: rgba(0,0,0,0.4) 0px 0px 10px;
+            border-radius: 5px;
+        }
+
+        input {
+            padding: 2px;
+            outline: 0;
+            border: 1px darkgray solid;
+            border-radius: 3px;
+        }
+            input:focus {
+                border-color: skyblue;
+            }
+
+        #LoginButton, #NewButton {
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 3px;
+            background-color: #164a84;
+            text-align: center;
+            width: 160px;
+            box-shadow: rgba(0,0,0,0.3) 0px 2px 5px;
+        }
+        #NewButton {
+            background: deepskyblue;
+        }
+        #LoginButton:hover, #NewButton:hover {
+            box-shadow: rgba(0,0,0,0.5) 0px 2px 5px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="panel">
+        <div style="display:flex; flex-direction: column;">
+            <p style="color:deepskyblue; font-size: 1.2em">新規登録</p>
+
+            <p style="margin-top: 10px">ユーザーID（必須）</p>
+            <input id="X_user" type="text" style="width: 220px" maxlength="16" />
+            <p style="margin-top: 10px">パスワード（必須）</p>
+            <input id="X_password" type="password" style="width: 220px" maxlength="30" />
+            <p style="margin-top: 10px">ニックネーム</p>
+            <input id="X_name" type="text" style="width: 220px" maxlength="20" />
+            <p style="margin-top: 10px">メールアドレス</p>
+            <input id="X_mail" type="text" style="width: 300px" maxlength="100" />
+        </div>
+        <p id="X_error" style="margin-top: 10px; max-width: 90%; height: 2em; color:tomato;"></p>
+        <div style="margin-top: 10px" id="NewButton" onclick="create()">新規登録</div>
+    </div>
+
+	<footer></footer>
+
+	<!-- ◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆ -->
+    
+    <script type="text/javascript">
+        var loading = false;
+
+        window.addEventListener("load", function () {
+        });
+
+        function create() {
+            if (loading) return;
+            var d = {};
+            d.id = document.getElementById("X_user").value;
+            d.password = document.getElementById("X_password").value;
+            d.nickname = document.getElementById("X_name").value;
+            d.mail = document.getElementById("X_mail").value;
+
+            if (/[a-zA-Z0-9]{4,}/.test(d.id) == false) {
+                setErrMessage("英数字で4文字以上のIDを入力してください");
+                return;
+            }
+            if (/^[a-zA-Z0-9!#%&\(\)\*\+,\-\.\/;<=>\?@\[\]\^_\{|\}~]{4,30}$/.test(d.password) == false){
+                setErrMessage("英数記号で4～30字のパスワードを入力してください");
+                return;
+            }
+            if (/^[^@]+@[^@]+$/.test(d.mail)==false) {
+                setErrMessage("正しい形式のメールアドレスを入力してください");
+                return;
+            }
+            setErrMessage("");
+
+            var param = {
+                type: "POST",
+                url: setting.apiRoot + "Login/create",
+                data: d,
+                callback: createCallback
+            }
+            common.ajax.ajax(param);
+
+            loading = true;
+            formDisable(true);
+        }
+
+        function createCallback(event) {
+            if (event.status == 200) {
+                var msg = "ようこそ！\nログインして利用を開始しましょう！";
+                dialog.messagebox(msg, dialog.Messagebox_Buttons_Ok, function () {
+                        location.href = "login.html";
+                    });
+            }
+            else {
+                //失敗
+                var msg = "アカウントを作成できませんでした。";
+                if (event.response != "") msg += "\n" + event.response;
+                dialog.messagebox(msg, dialog.Messagebox_Buttons_Ok, function () {
+                    loading = false;
+                    formDisable(false);
+                });
+            }
+        }
+
+        function formDisable(disable) {
+            var inputs = document.querySelectorAll("input");
+            Object.keys(inputs).forEach(function (k) {
+                inputs[k].disabled = disable;
+            });
+        }
+
+        function setErrMessage(msg) {
+            document.getElementById("X_error").innerText = msg;
+        }
+	</script>
+</body>
+
+</html>

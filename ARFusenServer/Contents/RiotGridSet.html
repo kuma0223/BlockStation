@@ -1,0 +1,318 @@
+<!-- Riot.js用表コントロールセット -->
+
+<!-- 入力可能グリッドコントロール 
+    属性
+        {number} rownum 行数
+    その他
+        フォントは親から継承
+-->
+<my-Grid>
+    <table ref="root">
+        <tr each={ row in cellsD }>
+            <td each={ cell in row } index={ cell.index } onclick={ cellClicked } style={ columnSet[cell.column].tdStyle() }>
+                <span  if={ !cell.focused } index={ cell.index }  style={ cell.style } >{ cell.text }</span>
+
+                <input if={ cell.focused } index={ cell.index } class={ "readonly":columnSet[cell.column].readOnly }
+                    type="text" maxlength="20" readonly={ columnSet[cell.column].readOnly ? 'readonly' : '' }
+                    onkeydown={ inputKeyDown }  />
+            </td>
+        </tr>
+    </talbe>
+
+    <style scoped>
+        :scope {
+            display: block;
+        }
+        :scope > table {
+            border-collapse: collapse;
+            border: solid 1px darkgray;
+        }
+        td {
+            background-color: transparent;
+            border: none 0 black;
+            border-left: solid 1px darkgray;
+            border-right: solid 1px darkgray;
+            margin: 0;
+            padding: 1px 3px 0 3px;
+            cursor: default;
+        }
+        tr:nth-child(even){
+            background-color:#EAEAEA;
+        }
+        td span, td input {
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            display: inline-block;
+            font: inherit;
+            font-size: inherit;
+            text-align: inherit;
+            border: solid 1px transparent;
+        }
+        td input {
+            border-color:lightgreen;
+        }
+        td input.readonly{
+            border-color:gray;
+        }
+        td input.readonly::selection{
+            background-color:lightgray;
+        }
+        input::-ms-clear {/* IEで表示される×ボタン */
+            visibility:collapse;
+        }
+    </style>
+
+    <script>
+        //セル型
+        var Cell = function(){
+            this.index;           //セルのインデクス（利用者変更不可）
+            this.row;             //行（利用者変更不可）
+            this.column;          //列（利用者変更不可）
+            this.focused = false; //選択状態（利用者変更不可）
+
+            this.text = "";       //表示内容
+            this.style = "''";    //表示領域の追加スタイル（文字色変更など）
+        }
+        //列設定型
+        var ColmunSetting = function(){
+            this.width = 75;            //列幅（px）
+            this.readOnly = false;      //編集不可列指定
+            this.textAlign = "right";   //文字配置
+
+            var me = this;
+            this.tdStyle = function(){
+                return "width:" + me.width + "px;"
+                    + "text-align:" + me.textAlign;
+            }
+        }
+        //----------------------------------------
+
+        var me = this;
+        var cellChanging = false; //セル選択変更フラグ
+
+        this.cells = [];          //セルオブジェクト群
+        this.cellsD = [];         //セルオブジェクト（マウント用）
+        this.columnSet = [];      //列設定
+        this.writable = false;    //入力可能フラグ
+        this.selectedIndex = -1;  //現在選択セルインデクス
+        this.rowNum = !isNaN(this.opts.rownum) ? Number(this.opts.rownum) : 1; //行数
+
+        //----------------------------------------
+        //初期化
+
+        function setup(){
+            me.cells=[]; me.cellsD=[];
+            for(var row=0; row < me.rowNum; row++){
+                me.cellsD.push([]);
+                for(var col=0; col < me.columnSet.length; col++){
+                    var c = new Cell();
+                    c.index = me.cells.length;
+                    c.column = col;
+                    c.row = row;
+                    me.cells.push(c);
+                    me.cellsD[row].push(c);
+                }
+            }
+            me.update();
+        }
+
+        this.on('updated', function(){
+            //新規選択セルへのフォーカス移動。DOM構成後にやらなければ駄目なのでここで。
+            if(cellChanging){
+                var input = getInputElement();
+                var colset = me.columnSet[me.cells[me.selectedIndex].column];
+                if(input){
+                    input.value = me.cells[me.selectedIndex].text;
+                    input.focus(); input.select();
+                }
+                cellChanging = false;
+            }
+        });
+
+        /**
+         * 選択セルの変更
+         * @param {number} index セルインデクス。-1で選択解除。
+         */
+        function selectCell(index){
+            if(me.selectedIndex == index){ return; }
+
+            //現在セルの選択解除
+            if(me.selectedIndex >= 0){
+                var nowCell = me.cells[me.selectedIndex];
+                var str = getInputElement().value;
+                if(str !== nowCell.text){
+                    if(!me.onValueChanging(nowCell, str)){
+                        nowCell.text = str;
+                    }
+                }
+                nowCell.focused = false;
+            }
+            //新規セルの選択
+            if(index >= 0){
+                me.cells[index].focused = true;
+                cellChanging = true;
+            }
+            me.selectedIndex = index;
+        }
+
+        function getInputElement(){
+            return me.refs.root.getElementsByTagName("input")[0];
+        }
+
+        function toIndex(row, col){
+            return row * me.columnSet.length + col;
+        }
+
+        //----------------------------------------
+        //イベント処理
+
+        this.cellClicked = function(event){
+            //クリックイベントは親に指定すると子からも飛んでくるから注意
+            if(me.writable){
+                var index = Number(event.target.getAttribute("index"));
+                selectCell(index);
+            }
+        }
+
+        this.inputKeyDown = function(event){
+            var row = me.cells[me.selectedIndex].row;
+            var col = me.cells[me.selectedIndex].column;
+            var systemKey = true;
+
+            switch(event.keyCode){
+                case 13: //ENTER
+                    if(event.shiftKey){ row--; } else{ row++; } break;
+                case 9: //Tab
+                    if(event.shiftKey){ col--; } else{ col++; } break;
+                case 37: col--; break; //左キー
+                case 38: row--; break; //上キー
+                case 39: col++; break; //右キー
+                case 40: row++; break; //下キー
+                default: systemKey = false;
+            }
+            if(!systemKey){ return true; }
+
+            if(row < 0){ row=0; }
+            if(row >= me.rowNum){ row=me.rowNum-1; }
+            if(col < 0){ col=0; }
+            if(col >= me.columnSet.length){ col = me.columnSet.length-1; }
+
+            var index = toIndex(row, col);
+            if(index != me.selectedIndex){
+                selectCell(index);
+            }
+            return false;
+        }
+        
+        //ロストフォーカスの飛ぶタイミングがブラウザにより違うので削除
+        //this.inputOutFocus = function(){
+        //    selectCell(-1);
+        //}
+
+        //----------------------------------------
+        //公開メソッド
+
+        /*
+         * 現在の列数行数でセルを作成し初期化します。
+         */
+        this.setup = setup;
+
+        /**
+         * このテーブルに列設定を作成し追加します。
+         * このメソッドを呼んでもsetupを行うまでテーブルには反映されません。
+         * @return {ColumnSetting} 作成した列設定
+         */
+        this.newColumn = function(){
+            var colset = new ColmunSetting();
+            me.columnSet.push(colset);
+            return colset;
+        }
+
+        /**
+         * 全てのセル配列を取得します。
+         * @return {Array} Cellオブジェクト配列
+         */
+        this.getCells = function(){
+            return me.cells;
+        }
+
+        /**
+         * 指定した行のセル配列を取得します。
+         * @param {number} rowIndex 行インデクス（0～）
+         * @return {Array} Cellオブジェクト配列
+         */
+        this.getRow = function(rowIndex){
+            var rows = [];
+            for(var i=0; i<me.columnSet.length; i++){
+                rows.push(me.cells[ me.columnSet.length * rowIndex + i ]);
+            }
+            return rows;
+        }
+
+        /**
+         * 指定した列のセル配列を取得します。
+         * @param {number} colIndex 列インデクス（0～）
+         * @return {Array} Cellオブジェクト配列
+         */
+        this.getColumn = function(colIndex){
+            var cols = [];
+            for(var i=0; i<me.rowNum; i++){
+                cols.push(me.cells[ me.columnSet.length * i + colIndex ]);
+            }
+            return cols;
+        }
+
+        /** 行数を設定します。
+         * このメソッドを呼んでもsetupを呼ばないとテーブルに反映されません。
+         * @param {number} rowNum 設定値
+         */
+        this.setRowNum = function(rowNum){
+            me.rowNum = rowNum;
+        }
+        /** 行数を取得します。
+         * @return {number} 取得値
+         */
+        this.getRowNum = function(){
+            return me.rowNum;
+        }
+        /** 行数を取得します。
+         * @return {number} 取得値
+         */
+        this.getColumnNum = function(){
+            return me.columnSet.length;
+        }
+        
+        /** 編集可能状態を設定します。
+         * セルがフォーカスされていた場合、編集が終了しイベントが飛ぶ場合があります。
+         * @param {boolean} rowNum 設定値
+         */
+        this.setWritable = function(writable){
+            me.writable = writable;
+            if(!writable){ selectCell(-1); }
+            me.update();
+        }
+
+        /** 列設定を取得します。
+         * @return {ColumnSet} 取得値
+         */
+        this.getColumnSet = function(colIndex){
+            return me.columnSet[colIndex];
+        }
+
+        //----------------------------------------
+        //個別イベントコールバック
+
+        /**
+         * セルの選択が解除されかつ値が変更されているとき、変更が適用される前に呼ばれます。
+         * 入力値に対して任意の変換を行いセルの要素を変更することができます。
+         * 戻り値がtrueでない場合、この呼び出しの後にセルのtextに入力値が代入されます。
+         * @param {Cell} cell 対象セル
+         * @param {string} input 入力値
+         * @return 入力値の適用が済みならtrue
+         */
+        this.onValueChanging = function(cell, input){return false;}
+
+    </script>
+
+</my-Grid>
