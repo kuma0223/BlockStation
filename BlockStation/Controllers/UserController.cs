@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using BlockStation.Filters;
 using BlockStation;
 using System.Net;
+using System.Data;
 using System.Data.SQLite;
 
 namespace BlockStation.Controllers
@@ -22,7 +23,7 @@ namespace BlockStation.Controllers
 
         public UserController() {
             lock (lockobj) {
-                if(con == null) {
+                if(con == null || con.State != ConnectionState.Open) {
                     con = new SQLiteConnection("Data Source=" + Shared.DBPath);
                     con.Open();
                 }
@@ -41,7 +42,7 @@ namespace BlockStation.Controllers
         [HttpGet]
         [Route("login")]
         public ActionResult<string> Login_Get([FromQuery]string id, [FromQuery]string password) {
-            return Login(new LoginBody() { id = id, password = password });
+            return Login_Post(new LoginBody() { id = id, password = password });
         }
 
         /// <summary>
@@ -49,7 +50,7 @@ namespace BlockStation.Controllers
         /// </summary>
         [HttpPost]
         [Route("login")]
-        public ActionResult<string> Login([FromBody] LoginBody data)
+        public ActionResult<string> Login_Post([FromBody] LoginBody data)
         {
             var res = new ContentResult();
             var info = GetUserInfo(data.id);
@@ -106,7 +107,6 @@ namespace BlockStation.Controllers
                         res.Content = "このIDは既に使用されています。";
                         return res;
                     }
-
                     //アカウント作成
                     var info = new UserInfo();
                     info.id          = data.id;
@@ -124,6 +124,56 @@ namespace BlockStation.Controllers
             return res;
         }
 
+        /// <summary>
+        /// ユーザー情報取得
+        /// </summary>
+        [HttpGet]
+        [Route("info")]
+        [ServiceFilter(typeof(LoginCheckFilter))]
+        public ActionResult UserInfo([FromQuery]string id) {
+            UserInfo info;
+            lock (lockobj) {
+                info = GetUserInfo(id);
+            }
+            if (info == null) {
+                return new NotFoundResult();
+            }
+            var ret = new InfoBody();
+            ret.id = info.id;
+            ret.name = info.name;
+            ret.mail = info.mail;
+            ret.level = info.level;
+            return new JsonResult(ret);
+        }
+
+        /// <summary>
+        /// ユーザーリスト取得
+        /// </summary>
+        [HttpGet]
+        [Route("list")]
+        [ServiceFilter(typeof(LoginCheckFilter))]
+        public ActionResult UserList() {
+            List<UserInfo> infos;
+            lock (lockobj) {
+                infos = GetUserInfo();
+            }
+            var list = new List<InfoBody>();
+            foreach (var info in infos) {
+                var ret = new InfoBody();
+                ret.id = info.id;
+                ret.name = info.name;
+                list.Add(ret);
+            }
+            return new JsonResult(list);
+        }
+
+        //◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
+        //DB Access
+        private List<UserInfo> GetUserInfo() {
+            var users = RDBUtility.SelectAll<UserInfo>(con, "DT_USERS");
+            users.Sort((a, b) =>  StringComparer.OrdinalIgnoreCase.Compare(a.id, b.id));
+            return users;
+        }
         private UserInfo GetUserInfo(string id) {
             return RDBUtility.Select<UserInfo>(con, "DT_USERS", $"ID='{id}'");
         }
@@ -131,6 +181,8 @@ namespace BlockStation.Controllers
             return RDBUtility.Insert(con, "DT_USERS", info);
         }
 
+        //◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
+        //Request/Response Body
         public class LoginBody
         {
             public string id;
@@ -142,6 +194,13 @@ namespace BlockStation.Controllers
             public string password;
             public string name;
             public string mail;
+        }
+        public class InfoBody
+        {
+            public string id;
+            public string name;
+            public string mail;
+            public int level;
         }
     }
 }
