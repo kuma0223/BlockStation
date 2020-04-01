@@ -1,0 +1,91 @@
+﻿/* 共通スタイル 基本全ページで読み込むことを前提とします。 */
+
+*{
+	-webkit-box-sizing: border-box; /* ボーダー・パディングを内側扱いで計算する。 */
+	-moz-box-sizing: border-box;	/* 全タグ既定指定するのでパーツのレイアウト時注意。 */
+	-o-box-sizing: border-box;		/* 〃 */
+	-ms-box-sizing: border-box;		/* 〃 */
+	box-sizing: border-box;			/* 〃 */
+	margin: 0; padding: 0;
+}
+
+html {
+    color: #404040;
+}
+body {
+    font-family: 'Hiragino Kaku Gothic ProN', 'メイリオ', meiryo, sans-serif;
+    font-size: 14px;
+    background: #F6F8FA;
+}
+input {
+    font-family: 'Hiragino Kaku Gothic ProN', 'メイリオ', meiryo, sans-serif;
+    font-size: 14px;
+}
+
+/* テキストボックスにIEで表示される×ボタン
+input::-ms-clear {
+    visibility: collapse;
+}
+*/
+
+/* ダイアログ関係 */
+div#dialogScreen{
+    visibility:hidden;
+    position:fixed;
+    top:0; left:0;
+    width:100%; height:100%;
+    background: rgba(0,0,0,0.3);
+    opacity:0;
+    transition-property:opacity;
+    transition:0.3s ease;
+    z-index:10;
+}
+div#dialogScreen.on{
+    visibility:visible;
+    opacity:1;
+}
+
+div#dialogBank{
+}
+
+.dialog{
+    display:block;
+    visibility:hidden;
+    border:solid 1px gray;
+	background: #FCFCFC;
+    position:absolute;
+    top:48%; left:50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 5px 5px 5px rgba(0,0,0,0.3);
+    transition: 0.3s ease;
+    z-index:11;
+}
+.dialog.on{
+    top: 50%;
+    visibility:visible;
+    animation: common-dialog-keyframe 0.3s ease 0s;
+}
+@keyframes common-dialog-keyframe{
+    0% { top:48%; }
+    100% { top: 50%; }
+}
+
+.messagebox{
+    color: #202020;
+}
+
+.messagebox .button{
+    display: inline-block;
+    user-select: none;
+    -ms-user-select: none;
+    cursor:pointer;
+    border-radius: 2px;
+    background: linear-gradient(to bottom, #e8eff7 0%,#d8dfe7 100%);
+    border: 1px solid gray;
+    border-color: darkgray darkgray dimgray darkgray;
+    margin: 0 20px;
+    width:100px;
+}
+.messagebox .button:active {
+    background: #EDEDFF;
+}
