@@ -113,7 +113,7 @@ namespace BlockStation.Controllers
                     info.name        = data.name;
                     info.password    = data.password;
                     info.mail        = data.mail;
-                    info.level       = 0;
+                    info.level       = 1;
                     info.create_time = DateTime.Now;
                     CreateUser(info);
                 }
@@ -123,6 +123,30 @@ namespace BlockStation.Controllers
             }
             return res;
         }
+        
+        /// <summary>
+        /// 情報更新
+        /// </summary>
+        [HttpPost]
+        [Route("update")]
+        [ServiceFilter(typeof(LoginCheckFilter))]
+        public ActionResult Update([FromBody] CreateBody data) {
+                var info = new UserInfo();
+                info.id          = data.id;
+                info.name        = data.name;
+                info.password    = data.password;
+                info.mail        = data.mail;
+                info.level       = data.level;
+            
+            try {
+                lock (lockobj) {
+                    UpdateUser(info);
+                }
+            } catch (Exception) {
+                return new BadRequestResult();
+            }
+            return new OkResult();
+        }
 
         /// <summary>
         /// ユーザー情報取得
@@ -131,10 +155,7 @@ namespace BlockStation.Controllers
         [Route("info")]
         [ServiceFilter(typeof(LoginCheckFilter))]
         public ActionResult UserInfo([FromQuery]string id) {
-            UserInfo info;
-            lock (lockobj) {
-                info = GetUserInfo(id);
-            }
+            var info = GetUserInfo(id);
             if (info == null) {
                 return new NotFoundResult();
             }
@@ -153,10 +174,7 @@ namespace BlockStation.Controllers
         [Route("list")]
         [ServiceFilter(typeof(LoginCheckFilter))]
         public ActionResult UserList() {
-            List<UserInfo> infos;
-            lock (lockobj) {
-                infos = GetUserInfo();
-            }
+            List<UserInfo> infos = GetUserInfo();
             var list = new List<InfoBody>();
             foreach (var info in infos) {
                 var ret = new InfoBody();
@@ -165,6 +183,17 @@ namespace BlockStation.Controllers
                 list.Add(ret);
             }
             return new JsonResult(list);
+        }
+
+        /// <summary>
+        /// ユーザーレベル取得
+        /// </summary>
+        [HttpGet]
+        [Route("level")]
+        public ActionResult Level([FromQuery]string id) {
+            var info = GetUserInfo(id);
+            if(info == null) return NotFound();
+            return new JsonResult(info==null ? 0 : info.level);
         }
 
         //◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
@@ -180,6 +209,27 @@ namespace BlockStation.Controllers
         private bool CreateUser(UserInfo info) {
             return RDBUtility.Insert(con, "DT_USERS", info);
         }
+        private bool UpdateUser(UserInfo info) {
+            string sql = "";
+            Action<string, object> add = (name, value) => {
+                if(sql.Length > 0) sql += ",";
+                sql += name + "=" + RDBUtility.ToSqlString(value);
+            };
+
+            if(info.level > 0)   add("LEVEL", info.level);
+            if(info.mail != null) add("MAIL",info.mail);
+            if(info.name != null) add("NAME",info.name);
+            if(info.pass_code != null) add("PASS_CODE", info.pass_code);
+            
+            if(sql.Length==0) return true; 
+
+            sql = "UPDATE DT_USERS SET " + sql + " WHERE ID=" + info.id;
+
+            using(var cmd = con.CreateCommand()) {
+                cmd.CommandText = sql;
+                return cmd.ExecuteNonQuery()==1;
+            }
+        }
 
         //◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
         //Request/Response Body
@@ -194,6 +244,7 @@ namespace BlockStation.Controllers
             public string password;
             public string name;
             public string mail;
+            public int level;
         }
         public class InfoBody
         {

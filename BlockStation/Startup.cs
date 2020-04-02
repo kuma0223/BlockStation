@@ -18,12 +18,6 @@ namespace BlockStation
     {
         public Startup(IConfiguration configuration) {
             Configuration = configuration;
-
-            //初期化
-            Shared.DBPath = Configuration.GetSection("DBPath").Value;
-
-            var tkey = Configuration.GetSection("TokenHashKey").Value;
-            Shared.LoginTokenMaker = new TokenMaker<LoginToken>(tkey);
         }
 
         public IConfiguration Configuration { get; }
@@ -45,6 +39,18 @@ namespace BlockStation
 
             app.UseHttpsRedirection();
             app.UseMvc();
+
+            //アプリケーションルートパス
+            Shared.ContentRootPath = env.ContentRootPath;
+            
+            //設定読み込み
+            Shared.DBPath = Configuration.GetSection("DBPath").Value;
+            if (Shared.DBPath.StartsWith(".")) {
+                Shared.DBPath = Shared.ContentRootPath + "/" + Shared.DBPath;
+            }
+
+            var tkey = Configuration.GetSection("TokenHashKey").Value;
+            Shared.LoginTokenMaker = new TokenMaker<LoginToken>(tkey);
 
             //静的ファイルを使用する
             app.UseStaticFiles();

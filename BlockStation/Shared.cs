@@ -8,6 +8,11 @@ namespace BlockStation
     public static class Shared
     {
         /// <summary>
+        /// アプリケーションパス
+        /// </summary>
+        public static string ContentRootPath { get; set; }
+
+        /// <summary>
         /// SQLiteデータベースパス
         /// </summary>
         public static string DBPath { get; set; }
