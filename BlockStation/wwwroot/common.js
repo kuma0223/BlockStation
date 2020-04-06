@@ -1,65 +1,10 @@
-/* 共通スクリプト 基本全ページで読み込むことを前提とします */
-/// <reference path="setting.js" />
-
 //初期化
-window.addEventListener("DOMContentLoaded", function(){
-    //タイトル設定
-    if(typeof setting !== "undefined"){
-        document.title = setting.title;
-    }
-});
+//window.addEventListener("DOMContentLoaded", function(){
+//});
 
-//◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
+var common = new function () {
 
-/**
- * アカウント状態クラス
- */
-var account = new function () {
-    this.getToken = function () {
-        var t = sessionStorage.getItem("token");
-        if (t == null || t == undefined) {
-            t = localStorage.getItem("token");
-        }
-        return t;
-    }
-    this.getId = function () {
-        var t = sessionStorage.getItem("id");
-        if (t == null || t == undefined) {
-            t = localStorage.getItem("id");
-        }
-        return t;
-    }
-    this.clear = function () {
-        sessionStorage.removeItem("id");
-        sessionStorage.removeItem("token");
-        localStorage.removeItem("id");
-        localStorage.removeItem("token");
-    }
-}
-
-//◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
-
-/**
- * 汎用関数群
- * このオブジェクトに属する者はすべて静的で状態を持たない関数もしくは定数とする。
- */
-var common = new function(){
-    //------------------------------------------------------------
-    //デバッグ用
-    this.debug = new function(){
-        var StatusBar = true;         //ステータスバー表示有
-
-         /** ブレークポイント設定用 */
-        this.break = function(){
-            var abc=0;
-        }
-        /** ステータスバーにデバッグ情報を表示します */
-        this.statusBar = function(msg){
-            if(StatusBar) window.status = msg;
-        }
-    }
-    
-    //------------------------------------------------------------
+    //--------------------
     //Object全般
     this.object = new function(){
         this.copyHash = function(org){
@@ -71,180 +16,8 @@ var common = new function(){
         }
     }
 
-    //------------------------------------------------------------
-    //Date型関係
-    this.date = new function(){
-        var me = this;
-
-        //通秒が0となる日時。日本タイムゾーンだと以下のgetTime()が0になる。
-        //取得データはサーバ環境依存、js側はクライアント環境依存なのに注意
-        //（取得データの通秒とgetTime()は互換無しと考えるべき）
-        this.zero = new Date(1970, 0, 1, 9, 0, 0, 0);
-
-        /** 
-         * 日付型をフォーマット変換します。
-         * 各フォーマット子の間は分割が必要です（yyyyMMddは不可、yyyy/MM/ddは可）。
-         * 複合フォーマットは正規表現や置換があるので format(d, "HH")+":"+ format(d, "mm") としたほうが早いです。
-         * @param {Date} d 日時
-         * @param {string} format フォーマット
-         */
-        this.format = function(d, format){
-            var ret = dateFormatParts(d, format);
-            if(ret != "") return ret;
-
-            var splited = format.split(/[^yMHdms]+/);
-            ret = format;
-            for(var i=0; i<splited.length; i++){
-                ret = ret.replace(splited[i], dateFormatParts(d, splited[i]));
-            }
-            return ret;
-        
-            //部品
-            function dateFormatParts(d, format){
-                switch(format){
-                    case "yy": return("00" + d.getFullYear()).substr(-2);
-                    case "yyyy": return("0000" + d.getFullYear()).substr(-4);
-                    case "MM": return ("00" + (d.getMonth()+1)).substr(-2);
-                    case "dd": return ("00" + d.getDate()).substr(-2);
-                    case "HH": return ("00" + d.getHours()).substr(-2);
-                    case "mm": return ("00" + d.getMinutes()).substr(-2);
-                    case "ss": return ("00" + d.getSeconds()).substr(-2);
-                    default : return "";
-                }
-            }
-        }
-
-        /**
-         * 日時文字列（yyyy/MM/dd HH:mm:ss.lll等）から日時型を生成します。
-         * 数字以外の文字を分割子とし、順序は年からでなければなりません。
-         * 時以降の最下位桁を省略した場合は0となります。
-         * 時は24時間表記で24時とした場合は翌日0時となります。
-         * @param {String} str 日時文字列
-         * @return 日付型
-         */
-        this.fromStr = function(str){
-            var splited = str.split(/[^0-9]+/);
-            var ret = new Date(splited[0], splited[1]-1, splited[2], 0, 0, 0, 0);
-            if(splited.length > 3) ret.setHours(splited[3]);
-            if(splited.length > 4) ret.setMinutes(splited[4]);
-            if(splited.length > 5) ret.setSeconds(splited[5]);
-            if(splited.length > 6) ret.setMilliseconds(splited[6]);
-            return ret;
-        }
-
-        /**
-         * 日時型の分を指定の間隔で丸めます。また分未満の値は全て0とします。
-         * @param {Date} d 対象日時（値が変更されます）
-         * @param {number} span (0<span<=60)となる分間隔
-         * @return {Date} 丸めた日時。ただし引数に渡したインスタンスです。
-         */
-        this.cutMinutes = function(d, span){
-			if(span==0) span=60;
-            d.setSeconds(0); d.setMilliseconds(0);
-            var min = d.getMinutes();
-            d.setMinutes(min - (min % span));
-            return d;
-        }
-
-        /**
-         * シリアライズされた.NetのDateTime型からgetTime()値を取り出します。
-         * @param {string} シリアライズされたDateTime型文字列
-         * @return {number} 変換不能の場合NaN
-         */
-        this.fromNetGetTime = function(str){
-            //ほんとにこの方法で全パターンでいいか検証が必要かも。
-            if(!str || str.length < 6){ return NaN; }
-            return parseInt(str.substr(6));
-        }
-
-        /**
-         * シリアライズされた.NetのDateTime型からDate型を作成します。
-         * @param {string} シリアライズされたDateTime型文字列
-         * @return {Date} 変換不能の場合null
-         */
-        this.fromNet = function(str){
-            var t = me.fromNetGetTime(str);
-            if(t == NaN) return null;
-            return new Date(t);
-        }
-
-        /**
-         * 通秒（UNIX時間）を日時型に変換します。
-         * @param {number} sec 通秒
-         * @return {Date} 日時
-         */
-        this.fromTotalSec = function(sec){
-            var t = new Date(me.zero.getTime());
-            t.setSeconds(t.getSeconds() + sec);
-            return t;
-        }
-        /**
-         * 日時型を通秒（UNIX時刻）に変換します。
-         * @param {Date} d 日時
-         * @return {number} 通秒
-         */
-        this.toTotalSec = function(d){
-            return Math.floor((d.getTime() - me.zero.getTime()) / 1000);
-        }
-        /**
-         * 通分（UNIX時間）を日時型に変換します。
-         * @param {number} sec 通秒
-         * @return {Date} 日時
-         */
-        this.fromTotalMin = function(min){
-            var t = new Date(me.zero.getTime());
-            t.setMinutes(t.getMinutes() + min);
-            return t;
-        }
-        /**
-         * 日時型を通分（UNIX時刻）に変換します。
-         * @param {Date} d 日時
-         * @return {number} 通秒
-         */
-        this.toTotalMin = function(d){
-            return Math.floor((d.getTime() - me.zero.getTime()) / 1000 / 60);
-        }
-    }
-
-    //------------------------------------------------------------
-    //数値型
-    this.number = new function(){
-        var me = this;
-
-        /**
-         * 整数か否か判定します。
-         * @param {number} x 数値
-         * @return {bool}
-         */
-        this.isInteger = function(x){
-            return /^-?[0-9]+$/.test(x);
-        }
-        
-        /**
-         * 整数部の桁数を返します。
-         * @param {number} x 数値
-         * @return {number}
-         */
-        this.getIDigit = function(x){
-            if(x<0) x=-x;
-            x = Math.floor(x);
-            return x.toString().length;
-        }
-
-        /**
-         * 整数を0埋め8桁の16進数表現に変更します。
-         * @param {number} x 32bit範囲内の整数
-         */
-        this.toIntHexString = function(x){
-             //負値は32bitの2の補数化
-            if(x < 0){ x = 0x100000000 - (-x); }
-            return ("00000000" + x.toString(16)).substr(-8);
-        }
-    }
-    
-    //------------------------------------------------------------
+    //--------------------
     //HTMLタグ
-
     this.html = new function(){
 
         /** URLパラメータを分解しハッシュで返します。
@@ -290,22 +63,6 @@ var common = new function(){
         }
 
         /**
-         * flexgridを使用して渡されたhtmlエレメントの中身を
-         * 両端ぞろえにします。
-         */
-        this.toJustify = function(element){
-            var txt = element.innerText;
-            var inner = "";
-            for(var i=0; i<txt.length; i++){
-                inner += "<span>" + txt.substr(i, 1) + "</span>";
-            }
-            element.style["display"] = "flex";
-            element.style["flex-direction"] = "row";
-            element.style["justify-content"] = "space-between";
-            element.innerHTML = inner;
-        }
-
-        /**
          * ハッシュをstyle属性の文字列に変換します。
          */
         this.toStyle = function(obj){
@@ -318,13 +75,12 @@ var common = new function(){
         }
     }
 
-
-    //------------------------------------------------------------
+    //--------------------
     //Ajax
 
     this.ajax = new function(){
         var DefaultParam = {
-            type: "", //指定必須 GET POSTなど。Webサービスの呼び出しはPOST。
+            type: "", //指定必須 GET POSTなど
             url:"",   //指定必須
             data:{},
             timeout:20000,
@@ -390,94 +146,7 @@ var common = new function(){
             }
         }
     }
-
-    //------------------------------------------------------------
-    //Riot.js関係
-
-    this.riot = new function(){
-        /**
-         * カスタムタグを名称検索します。
-         * @param tags riot.moun()で返されるタグオブジェクト群
-         * @param {string} name 取得対象
-         * @return 最初に見つかったタグオブジェクト
-         */
-        this.tagFromName = function(tags, name){
-            for(var i=0; i<tags.length; i++){
-                if(tags[i].opts.name === name) { return tags[i]; }
-            }
-            return null;
-        }
-
-        /**
-         * this.refs.xxxに対しforEachを掛けます。listが単体オブジェの場合でも実行されます。
-         * Riot.js V3で、子タグのupdateをするとrefs.xxx[]の順序が変更されるため、一時配列を作成して回す。
-         * 以前のtagsはこうならなかった。これは仕様なのか？バグなのか？
-         * 実行順序が保障されないことに注意。
-         * @param {list} 対象の配列（this.refs.xxx）
-         * @param {func} 処理 
-         */
-        this.refEach = function(list, func){
-            var tmp = [];
-            if (list == undefined) { return; }
-            else if(Array.isArray(list)){ list.forEach(function(item){ tmp.push(item); }); }
-            else{ tmp.push(list); }
-            tmp.forEach(func);
-        }
-    }
 };
-
-//◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
-
-/**
- * フッター操作クラス
- */
-var footer = new function(){
-    var text = "";  //現在状態
-    var state = ""; //〃
-
-    /**
-     * 現在表示中の文字列を取得します。
-     */
-    this.getText = function () {
-        return text;
-    }
-
-    /**
-     * 表示をクリアします。
-     */
-    this.clear = function () {
-        setFooter("", "");
-    }
-
-    /**
-     * メッセージ表示を行います。
-     * @param {string} message 表示メッセージ
-     */
-    this.message = function (message) {
-        setFooter(message, "message");
-    }
-
-    /**
-     * エラー表示を行います。
-     * @param {string} message 表示メッセージ
-     */
-    this.error = function(message){
-        setFooter(message, "error");
-    }
-
-    function setFooter(message, cls){
-        if(text !== message || state !== cls){
-            var elements = document.getElementsByTagName("footer");
-            if(elements.length > 0){
-                elements[0].innerText = message;
-                elements[0].className = cls;
-            }
-            state = cls; text = message;
-        }
-    }
-}
-
-//◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
 
 /**
  * ダイアログ操作クラス

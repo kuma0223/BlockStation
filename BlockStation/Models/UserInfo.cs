@@ -57,6 +57,7 @@ public class UserInfo
 
     private string ToPasscode(string value)
     {
+        if(value == null) value = "";
         var sha = new System.Security.Cryptography.SHA256CryptoServiceProvider();
         var bytes = sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(value));
         var buil = new System.Text.StringBuilder(bytes.Length * 2);

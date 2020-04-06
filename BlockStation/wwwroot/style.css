@@ -37,7 +37,7 @@ div#dialogScreen{
     background: rgba(0,0,0,0.3);
     opacity:0;
     transition-property:opacity;
-    transition:0.3s ease;
+    transition:0.2s ease;
     z-index:10;
 }
 div#dialogScreen.on{
@@ -48,44 +48,37 @@ div#dialogScreen.on{
 div#dialogBank{
 }
 
-.dialog{
-    display:block;
-    visibility:hidden;
-    border:solid 1px gray;
-	background: #FCFCFC;
-    position:absolute;
-    top:48%; left:50%;
+.dialog {
+    display: block;
+    visibility: hidden;
+    border: solid 1px gray;
+    background: #F6F8FA;
+    position: absolute;
+    top: 50%;
+    left: 50%;
     transform: translate(-50%, -50%);
     box-shadow: 5px 5px 5px rgba(0,0,0,0.3);
     transition: 0.3s ease;
-    z-index:11;
+    z-index: 11;
 }
 .dialog.on{
     top: 50%;
     visibility:visible;
-    animation: common-dialog-keyframe 0.3s ease 0s;
 }
-@keyframes common-dialog-keyframe{
-    0% { top:48%; }
-    100% { top: 50%; }
-}
-
 .messagebox{
     color: #202020;
 }
-
-.messagebox .button{
+.messagebox .button {
     display: inline-block;
     user-select: none;
     -ms-user-select: none;
-    cursor:pointer;
+    cursor: pointer;
     border-radius: 2px;
-    background: linear-gradient(to bottom, #e8eff7 0%,#d8dfe7 100%);
-    border: 1px solid gray;
-    border-color: darkgray darkgray dimgray darkgray;
+    border: 1px solid #202020;
+    box-shadow: rgba(0,0,0,0.2) 0px 2px 5px;
     margin: 0 20px;
-    width:100px;
+    width: 100px;
 }
 .messagebox .button:active {
-    background: #EDEDFF;
+    box-shadow: none;
 }

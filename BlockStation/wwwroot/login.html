@@ -7,6 +7,7 @@
     <meta name="robots" content="noindex" />
 
     <script src="common.js" type="text/javascript"></script>
+    <script src="account.js" type="text/javascript"></script>
     <link href="style.css" rel="stylesheet" type="text/css" />
 
     <title>Block Station | Login</title>
@@ -16,14 +17,16 @@
             background: #164a84;
             color: white;
         }
+
         input {
             padding: 2px;
             outline: 0;
             border: 0px darkgray solid;
         }
-        input:focus {
-            border-color: skyblue;
-        }
+            input:focus {
+                border-color: skyblue;
+            }
+
         #LoginButton {
             cursor: pointer;
             padding: 5px;
@@ -33,10 +36,13 @@
             transition: background-color ease 0.3s;
             border-radius: 2px;
         }
-        #LoginButton:hover, #NewButton:hover {
-            border: 1px solid white;
-            background-color: rgba(255,255,255,0.2);
-        }
+            #LoginButton:hover {
+                background-color: rgba(255,255,255,0.2);
+            }
+            #LoginButton:active {
+                box-shadow:none;
+            }
+
         h1 {
             font-family: Verdana;
             font-size: 2.5em;
@@ -70,15 +76,13 @@
 	<!-- ◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆ -->
     
     <script type="text/javascript">
-        var loading = false;
 
         window.addEventListener("load", function () {
         });
 
         function login() {
-            if (loading) return;
-            loading = true;
             formDisable(true);
+            account.clear();
 
             var id = document.getElementById("X_user").value;
             var pass = document.getElementById("X_password").value;
@@ -102,15 +106,20 @@
             }
 
             var res = event.response;
-            var isSave = document.getElementById("X_save").checked;
-            if (isSave) {
-                localStorage.setItem("token", res);
-            } else {
-                sessionStorage.setItem("token", res);
-            }
+            var keep = document.getElementById("X_save").checked;
+            account.setToken(res, keep);
+
             var prev = getPrevPage();
             dialog.messagebox("ログインしました", dialog.Messagebox_Buttons_Ok);
             //location.href = "main.html";
+
+            account.ajax({
+                type: "GET",
+                url: "api/user/info?id=" + account.getId(),
+                callback: function (e) {
+                    //alert(e.response);
+                }
+            });
         }
 
         function formDisable(disable) {
