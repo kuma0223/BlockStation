@@ -8,6 +8,7 @@ using BlockStation;
 using System.Net;
 using System.Data;
 using System.Data.SQLite;
+using Microsoft.Extensions.Logging;
 
 namespace BlockStation.Controllers
 {
@@ -19,21 +20,10 @@ namespace BlockStation.Controllers
     public class UserController : ControllerBase
     {
         private static object lockobj = new object();
-        private static SQLiteConnection con;
+        private ILogger logger;
 
-        public UserController() {
-            lock (lockobj) {
-                if(con == null || con.State != ConnectionState.Open) {
-                    con = new SQLiteConnection("Data Source=" + Shared.DBPath);
-                    con.Open();
-                }
-            }
-        }
-
-        ~UserController() {
-            //lock (lockobj) {
-            //    connection.Close();
-            //}
+        public UserController(ILogger<UserController> logger) {
+            this.logger = logger;
         }
 
         /// <summary>
@@ -52,29 +42,29 @@ namespace BlockStation.Controllers
         [Route("login")]
         public ActionResult<string> Login_Post([FromBody] LoginBody data)
         {
-            var res = new ContentResult();
-            var info = GetUserInfo(data.id);
+            var info = ExecDB<UserInfo>(con => 
+                GetUserInfo(con, data.id)
+            );
+            logger.Log(LogLevel.Error, sw.ElapsedMilliseconds.ToString());
 
             //ユーザー情報チェック
             if (info != null && info.CheckPassword(data.password)) {
                 //成功 トークンを作成して返す
                 var token = new LoginToken();
-                token.id        = data.id;
-                token.level     = info.level;
+                token.id = data.id;
+                token.level = info.level;
                 token.TimeValue = DateTime.Now;
-                token.expi      = 60 * 60;
+                token.expi = 60 * 60;
 
-                string tokencode =　Shared.LoginTokenMaker.MakeToken(token);
-                res.Content = tokencode;
-                
-                res.StatusCode = (int)HttpStatusCode.OK;
-            }
-            else {
+                string tokencode = Shared.LoginTokenMaker.MakeToken(token);
+                return Ok(tokencode);
+            } else {
                 //失敗 401応答
+                var res = new ContentResult();
                 res.Content = "ユーザーID/パスワードが異なります";
                 res.StatusCode = (int)HttpStatusCode.Unauthorized;
+                return res;
             }
-            return res;
         }
 
         /// <summary>
@@ -85,7 +75,7 @@ namespace BlockStation.Controllers
         public ActionResult Create([FromBody] CreateBody data)
         {
             var res = new ContentResult();
-            res.StatusCode = (int)HttpStatusCode.BadRequest;//400
+            res.StatusCode = (int)HttpStatusCode.BadRequest;
 
             if(!Regex.IsMatch(data.id, @"[a-zA-Z0-9]{4,}")) {
                 res.Content = "英数字で4文字以上のIDを入力してください。";
@@ -100,28 +90,29 @@ namespace BlockStation.Controllers
                 return res;
             }
 
-            try { 
-                lock (lockobj) {
+            try {
+                return ExecDB<ActionResult>(con => {
                     //ダブりチェック
-                    if(GetUserInfo(data.id) != null) {
+                    if (GetUserInfo(con, data.id) != null) {
                         res.Content = "このIDは既に使用されています。";
                         return res;
                     }
                     //アカウント作成
                     var info = new UserInfo();
-                    info.id          = data.id;
-                    info.name        = data.name;
-                    info.password    = data.password;
-                    info.mail        = data.mail;
-                    info.level       = 1;
+                    info.id = data.id;
+                    info.name = data.name;
+                    info.password = data.password;
+                    info.mail = data.mail;
+                    info.level = 1;
                     info.create_time = DateTime.Now;
-                    CreateUser(info);
-                }
-                res.StatusCode = (int)HttpStatusCode.OK;
+                    CreateUser(con, info);
+                    res.StatusCode = (int)HttpStatusCode.OK;
+                    return res;
+                });
             }catch(Exception) {
                 res.StatusCode = (int)HttpStatusCode.InternalServerError;
+                return res;
             }
-            return res;
         }
         
         /// <summary>
@@ -131,17 +122,15 @@ namespace BlockStation.Controllers
         [Route("update")]
         [ServiceFilter(typeof(LoginCheckFilter))]
         public ActionResult Update([FromBody] CreateBody data) {
-                var info = new UserInfo();
-                info.id          = data.id;
-                info.name        = data.name;
-                info.password    = data.password;
-                info.mail        = data.mail;
-                info.level       = data.level;
-            
+            var info = new UserInfo();
+            info.id = data.id;
+            info.name = data.name;
+            info.password = data.password;
+            info.mail = data.mail;
+            info.level = data.level;
+
             try {
-                lock (lockobj) {
-                    UpdateUser(info);
-                }
+                ExecDB<bool>(con => UpdateUser(con, info));
             } catch (Exception) {
                 return new BadRequestResult();
             }
@@ -155,7 +144,9 @@ namespace BlockStation.Controllers
         [Route("info")]
         [ServiceFilter(typeof(LoginCheckFilter))]
         public ActionResult UserInfo([FromQuery]string id) {
-            var info = GetUserInfo(id);
+            var info = ExecDB<UserInfo>(con => 
+                GetUserInfo(con, id)
+            );
             if (info == null) {
                 return new NotFoundResult();
             }
@@ -174,7 +165,10 @@ namespace BlockStation.Controllers
         [Route("list")]
         [ServiceFilter(typeof(LoginCheckFilter))]
         public ActionResult UserList() {
-            List<UserInfo> infos = GetUserInfo();
+            var infos = ExecDB<List<UserInfo>>(con =>
+                GetUserInfo(con)
+            );
+
             var list = new List<InfoBody>();
             foreach (var info in infos) {
                 var ret = new InfoBody();
@@ -182,7 +176,7 @@ namespace BlockStation.Controllers
                 ret.name = info.name;
                 list.Add(ret);
             }
-            return new JsonResult(list);
+            return Ok(list);
         }
 
         /// <summary>
@@ -191,25 +185,40 @@ namespace BlockStation.Controllers
         [HttpGet]
         [Route("level")]
         public ActionResult Level([FromQuery]string id) {
-            var info = GetUserInfo(id);
-            if(info == null) return NotFound();
-            return new JsonResult(info==null ? 0 : info.level);
+            var info = ExecDB<UserInfo>(con =>
+                GetUserInfo(con, id)
+            );
+            if (info == null) return NotFound();
+            return Ok(info == null ? 0 : info.level);
         }
 
         //◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
         //DB Access
-        private List<UserInfo> GetUserInfo() {
+        
+        private SQLiteConnection Open() {
+            var con = new SQLiteConnection("Data Source=" + Shared.DBPath);
+            con.Open();
+            return con;
+        }
+        private T ExecDB<T>(Func<SQLiteConnection, T> func) {
+            lock(lockobj) {
+                using(var con = Open()) {
+                    return func(con);
+                }
+            }
+        }
+        private List<UserInfo> GetUserInfo(SQLiteConnection con) {
             var users = RDBUtility.SelectAll<UserInfo>(con, "DT_USERS");
-            users.Sort((a, b) =>  StringComparer.OrdinalIgnoreCase.Compare(a.id, b.id));
+            users.Sort((a, b) => a.id.CompareTo(b.id));
             return users;
         }
-        private UserInfo GetUserInfo(string id) {
+        private UserInfo GetUserInfo(SQLiteConnection con, string id) {
             return RDBUtility.Select<UserInfo>(con, "DT_USERS", $"ID='{id}'");
         }
-        private bool CreateUser(UserInfo info) {
+        private bool CreateUser(SQLiteConnection con, UserInfo info) {
             return RDBUtility.Insert(con, "DT_USERS", info);
         }
-        private bool UpdateUser(UserInfo info) {
+        private bool UpdateUser(SQLiteConnection con, UserInfo info) {
             string sql = "";
             Action<string, object> add = (name, value) => {
                 if(sql.Length > 0) sql += ",";
@@ -225,9 +234,9 @@ namespace BlockStation.Controllers
 
             sql = "UPDATE DT_USERS SET " + sql + " WHERE ID=" + info.id;
 
-            using(var cmd = con.CreateCommand()) {
+            using (var cmd = con.CreateCommand()) {
                 cmd.CommandText = sql;
-                return cmd.ExecuteNonQuery()==1;
+                return cmd.ExecuteNonQuery() == 1;
             }
         }
 
