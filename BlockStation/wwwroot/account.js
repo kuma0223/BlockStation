@@ -33,7 +33,7 @@ var account = new function () {
     }
 
     this.ajax = function(param) {
-        param.authorization = me.getToken();
+        param.authorization = "Bearer " + me.getToken();
         common.ajax.ajax(param);
     }
 

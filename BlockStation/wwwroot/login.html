@@ -115,9 +115,9 @@
 
             account.ajax({
                 type: "GET",
-                url: "api/user/info?id=" + account.getId(),
+                url: "api/user/reload",
                 callback: function (e) {
-                    //alert(e.response);
+                    alert(e.response);
                 }
             });
         }

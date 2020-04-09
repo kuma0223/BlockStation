@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using BlockStation;
+using System.Text.RegularExpressions;
 
 namespace BlockStation.Filters
 {
@@ -15,18 +16,20 @@ namespace BlockStation.Filters
     /// </summary>
     public class LoginCheckFilter : IActionFilter
     {
-        public void OnActionExecuting(ActionExecutingContext actionContext) {
-            var auth = actionContext.HttpContext.Request.Headers["Authorization"].ToString().Split(' ');
+        private Regex regex = new Regex(@"Bearer\s+(.*)");
 
-            if (auth.Length < 2 || auth[0] != "Bearer" || !CheckToken(auth[1])) {
+        public void OnActionExecuting(ActionExecutingContext actionContext) {
+            var auth = actionContext.HttpContext.Request.Headers["Authorization"].ToString();
+            var mc = regex.Match(auth);
+
+            if (!mc.Success || !CheckToken(mc.Groups[1].Value)) {
                 //未認証 or 不正トークン
-                
-                actionContext.Result = new Microsoft.AspNetCore.Mvc.ContentResult(){
+                actionContext.Result = new ContentResult(){
                     Content = "ログイン認証が必要です。",
                     StatusCode = (int)HttpStatusCode.Unauthorized
                 };
             }
-            actionContext.HttpContext.Response.Headers["WWWAuthenticate"].Append("Bearer realm=\"\"");
+            actionContext.HttpContext.Response.Headers["WWWAuthenticate"].Append("Bearer");
         }
         
         void IActionFilter.OnActionExecuted(ActionExecutedContext context) {

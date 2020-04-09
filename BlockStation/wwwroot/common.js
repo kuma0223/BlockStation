@@ -108,7 +108,7 @@ var common = new function () {
                 req.setRequestHeader("Content-Type",
                     param.contentType !== undefined ? param.contentType : DefaultParam.contentType);
                 req.setRequestHeader("Authorization",
-                    param.authorization !== undefined ? ("Bearer " + param.authorization) : DefaultParam.authorization);
+                    param.authorization !== undefined ? param.authorization : DefaultParam.authorization);
                 //送信
                 req.send(JSON.stringify(param.data!==undefined ? param.data : DefaultParam.data));
             }catch(e){

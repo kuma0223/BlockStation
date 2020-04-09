@@ -19,11 +19,16 @@ namespace BlockStation.Controllers
     [ApiController]
     public class UserController : ControllerBase
     {
-        private static object lockobj = new object();
+        private static object updatelock = new object();
+        private static SQLiteAdapter con;
         private ILogger logger;
 
         public UserController(ILogger<UserController> logger) {
             this.logger = logger;
+            if(con == null) {
+                con = new SQLiteAdapter("Data Source=" + Shared.DBPath);
+                con.Open();
+            }
         }
 
         /// <summary>
@@ -42,10 +47,7 @@ namespace BlockStation.Controllers
         [Route("login")]
         public ActionResult<string> Login_Post([FromBody] LoginBody data)
         {
-            var info = ExecDB<UserInfo>(con => 
-                GetUserInfo(con, data.id)
-            );
-            logger.Log(LogLevel.Error, sw.ElapsedMilliseconds.ToString());
+            var info = GetUserInfo(data.id);
 
             //ユーザー情報チェック
             if (info != null && info.CheckPassword(data.password)) {
@@ -54,7 +56,7 @@ namespace BlockStation.Controllers
                 token.id = data.id;
                 token.level = info.level;
                 token.TimeValue = DateTime.Now;
-                token.expi = 60 * 60;
+                token.expi = 24 * 60 * 60;
 
                 string tokencode = Shared.LoginTokenMaker.MakeToken(token);
                 return Ok(tokencode);
@@ -68,10 +70,26 @@ namespace BlockStation.Controllers
         }
 
         /// <summary>
+        /// ログイントークンの更新
+        /// </summary>
+        [HttpGet]
+        [Route("reload")]
+        [ServiceFilter(typeof(LoginCheckFilter))]
+        public ActionResult Reload() {
+            //フィルタを通ってればOK
+            var auth = Request.Headers["Authorization"].ToString().Split(' ')[1];
+            var token = Shared.LoginTokenMaker.AnalyseToken(auth);
+            token.TimeValue = DateTime.Now;
+
+            return Ok(Shared.LoginTokenMaker.MakeToken(token));
+        }
+
+        /// <summary>
         /// 新規登録
         /// </summary>
         [HttpPost]
         [Route("create")]
+        [ServiceFilter(typeof(LoginCheckFilter))]
         public ActionResult Create([FromBody] CreateBody data)
         {
             var res = new ContentResult();
@@ -91,9 +109,9 @@ namespace BlockStation.Controllers
             }
 
             try {
-                return ExecDB<ActionResult>(con => {
+                lock (updatelock) {
                     //ダブりチェック
-                    if (GetUserInfo(con, data.id) != null) {
+                    if (GetUserInfo(data.id) != null) {
                         res.Content = "このIDは既に使用されています。";
                         return res;
                     }
@@ -105,14 +123,13 @@ namespace BlockStation.Controllers
                     info.mail = data.mail;
                     info.level = 1;
                     info.create_time = DateTime.Now;
-                    CreateUser(con, info);
+                    CreateUser(info);
                     res.StatusCode = (int)HttpStatusCode.OK;
-                    return res;
-                });
+                }
             }catch(Exception) {
                 res.StatusCode = (int)HttpStatusCode.InternalServerError;
-                return res;
             }
+            return res;
         }
         
         /// <summary>
@@ -130,7 +147,9 @@ namespace BlockStation.Controllers
             info.level = data.level;
 
             try {
-                ExecDB<bool>(con => UpdateUser(con, info));
+                lock (updatelock) {
+                    UpdateUser(info);
+                }
             } catch (Exception) {
                 return new BadRequestResult();
             }
@@ -144,9 +163,7 @@ namespace BlockStation.Controllers
         [Route("info")]
         [ServiceFilter(typeof(LoginCheckFilter))]
         public ActionResult UserInfo([FromQuery]string id) {
-            var info = ExecDB<UserInfo>(con => 
-                GetUserInfo(con, id)
-            );
+            var info = GetUserInfo(id);
             if (info == null) {
                 return new NotFoundResult();
             }
@@ -165,12 +182,8 @@ namespace BlockStation.Controllers
         [Route("list")]
         [ServiceFilter(typeof(LoginCheckFilter))]
         public ActionResult UserList() {
-            var infos = ExecDB<List<UserInfo>>(con =>
-                GetUserInfo(con)
-            );
-
             var list = new List<InfoBody>();
-            foreach (var info in infos) {
+            foreach (var info in GetUserInfo()) {
                 var ret = new InfoBody();
                 ret.id = info.id;
                 ret.name = info.name;
@@ -185,9 +198,7 @@ namespace BlockStation.Controllers
         [HttpGet]
         [Route("level")]
         public ActionResult Level([FromQuery]string id) {
-            var info = ExecDB<UserInfo>(con =>
-                GetUserInfo(con, id)
-            );
+            var info = GetUserInfo(id);
             if (info == null) return NotFound();
             return Ok(info == null ? 0 : info.level);
         }
@@ -195,34 +206,20 @@ namespace BlockStation.Controllers
         //◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
         //DB Access
         
-        private SQLiteConnection Open() {
-            var con = new SQLiteConnection("Data Source=" + Shared.DBPath);
-            con.Open();
-            return con;
+        private List<UserInfo> GetUserInfo() {
+            return con.SelectAll<UserInfo>("DT_USERS");
         }
-        private T ExecDB<T>(Func<SQLiteConnection, T> func) {
-            lock(lockobj) {
-                using(var con = Open()) {
-                    return func(con);
-                }
-            }
+        private UserInfo GetUserInfo(string id) {
+            return con.Select<UserInfo>("DT_USERS", $"ID='{id}'");
         }
-        private List<UserInfo> GetUserInfo(SQLiteConnection con) {
-            var users = RDBUtility.SelectAll<UserInfo>(con, "DT_USERS");
-            users.Sort((a, b) => a.id.CompareTo(b.id));
-            return users;
+        private bool CreateUser(UserInfo info) {
+            return con.Insert("DT_USERS", info);
         }
-        private UserInfo GetUserInfo(SQLiteConnection con, string id) {
-            return RDBUtility.Select<UserInfo>(con, "DT_USERS", $"ID='{id}'");
-        }
-        private bool CreateUser(SQLiteConnection con, UserInfo info) {
-            return RDBUtility.Insert(con, "DT_USERS", info);
-        }
-        private bool UpdateUser(SQLiteConnection con, UserInfo info) {
+        private bool UpdateUser(UserInfo info) {
             string sql = "";
             Action<string, object> add = (name, value) => {
                 if(sql.Length > 0) sql += ",";
-                sql += name + "=" + RDBUtility.ToSqlString(value);
+                sql += name + "=" + con.ToSql(value);
             };
 
             if(info.level > 0)   add("LEVEL", info.level);
@@ -233,11 +230,7 @@ namespace BlockStation.Controllers
             if(sql.Length==0) return true; 
 
             sql = "UPDATE DT_USERS SET " + sql + " WHERE ID=" + info.id;
-
-            using (var cmd = con.CreateCommand()) {
-                cmd.CommandText = sql;
-                return cmd.ExecuteNonQuery() == 1;
-            }
+            return con.ExecuteNonQuery(sql) == 1;
         }
 
         //◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
