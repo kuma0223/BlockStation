@@ -1,13 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
 using BlockStation.Filters;
 using BlockStation;
 using System.Net;
-using System.Data;
-using System.Data.SQLite;
 using Microsoft.Extensions.Logging;
 
 namespace BlockStation.Controllers
@@ -92,28 +91,21 @@ namespace BlockStation.Controllers
         [ServiceFilter(typeof(LoginCheckFilter))]
         public ActionResult Create([FromBody] CreateBody data)
         {
-            var res = new ContentResult();
-            res.StatusCode = (int)HttpStatusCode.BadRequest;
-
             if(!Regex.IsMatch(data.id, @"[a-zA-Z0-9]{4,}")) {
-                res.Content = "英数字で4文字以上のIDを入力してください。";
-                return res;
+                return BadRequest("英数字で4文字以上のIDを入力してください。");
             }
             if(!Regex.IsMatch(data.password, @"^[a-zA-Z0-9!#%&\(\)\*\+,\-\.\/;<=>\?@\[\]\^_\{|\}~]{4,}$")) {
-                res.Content = "英数字で4文字以上のパスワードを入力してください。";
-                return res;
+                return BadRequest("英数字で4文字以上のパスワードを入力してください。");
             }
             if(!Regex.IsMatch(data.mail, @"^[^@]+@[^@]+$")) {
-                res.Content = "正しい形式のメールアドレスを入力してください。";
-                return res;
+                return BadRequest("正しい形式のメールアドレスを入力してください。");
             }
 
             try {
                 lock (updatelock) {
                     //ダブりチェック
                     if (GetUserInfo(data.id) != null) {
-                        res.Content = "このIDは既に使用されています。";
-                        return res;
+                        return BadRequest("このIDは既に使用されています。");
                     }
                     //アカウント作成
                     var info = new UserInfo();
@@ -124,12 +116,13 @@ namespace BlockStation.Controllers
                     info.level = 1;
                     info.create_time = DateTime.Now;
                     CreateUser(info);
-                    res.StatusCode = (int)HttpStatusCode.OK;
+                    return Ok();
                 }
             }catch(Exception) {
+                var res = new ContentResult();
                 res.StatusCode = (int)HttpStatusCode.InternalServerError;
+                return res;
             }
-            return res;
         }
         
         /// <summary>
@@ -153,7 +146,7 @@ namespace BlockStation.Controllers
             } catch (Exception) {
                 return new BadRequestResult();
             }
-            return new OkResult();
+            return Ok();
         }
 
         /// <summary>
@@ -172,7 +165,7 @@ namespace BlockStation.Controllers
             ret.name = info.name;
             ret.mail = info.mail;
             ret.level = info.level;
-            return new JsonResult(ret);
+            return Ok(ret);
         }
 
         /// <summary>
@@ -182,14 +175,22 @@ namespace BlockStation.Controllers
         [Route("list")]
         [ServiceFilter(typeof(LoginCheckFilter))]
         public ActionResult UserList() {
-            var list = new List<InfoBody>();
-            foreach (var info in GetUserInfo()) {
-                var ret = new InfoBody();
-                ret.id = info.id;
-                ret.name = info.name;
-                list.Add(ret);
+            var infos = GetUserInfo();
+            infos.Sort((x, y) => x.id.CompareTo(y.id));
+
+            var str = new StringBuilder();
+            foreach (var info in infos) {
+                if (str.Length > 0) str.Append(',');
+                str.Append("{");
+                str.Append($"\"id\":\"{info.id}\",");
+                str.Append($"\"name\":\"{info.name}\"");
+                str.Append("}");
             }
-            return Ok(list);
+            var ret = new ContentResult();
+            ret.ContentType = "application/json";
+            ret.Content = "[" + str + "]";
+            ret.StatusCode = (int)HttpStatusCode.OK;
+            return ret;
         }
 
         /// <summary>

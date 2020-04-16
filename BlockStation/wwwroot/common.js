@@ -82,8 +82,8 @@ var common = new function () {
         var DefaultParam = {
             type: "", //指定必須 GET POSTなど
             url:"",   //指定必須
-            data:{},
-            timeout:20000,
+            data:null,
+            timeout:10000,
             contentType: "application/json; charset=UTF-8",
             authorization: null,
             callback: function (event) { }
@@ -110,7 +110,11 @@ var common = new function () {
                 req.setRequestHeader("Authorization",
                     param.authorization !== undefined ? param.authorization : DefaultParam.authorization);
                 //送信
-                req.send(JSON.stringify(param.data!==undefined ? param.data : DefaultParam.data));
+                if (param.data !== undefined) {
+                    req.send(JSON.stringify(param.data));
+                } else {
+                    req.send();
+                }
             }catch(e){
                 beCallback(false, "通信を開始できませんでした。" + e.message);
             }
@@ -134,15 +138,15 @@ var common = new function () {
             }
 
             function beCallback(success, message){
-                var callback = (param.callback !== undefined ? param.callback : DefaultParam.callback);
                 var event = {
                     success:success,
-                    response:req.response,
-                    responseType:req.responseType,
+                    response: req.response,
                     status:req.status,
                     message:message
                 };
-                callback(event);
+                if (param.callback !== undefined && param.callback !== null) {
+                    param.callback(event);
+                }
             }
         }
     }
