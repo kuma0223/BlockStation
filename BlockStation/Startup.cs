@@ -26,6 +26,7 @@ namespace BlockStation
         public void ConfigureServices(IServiceCollection services) {
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
             
+            //フィルタ登録
             services.AddScoped<LoginCheckFilter>();
         }
 
@@ -51,7 +52,7 @@ namespace BlockStation
 
             var tkey = Configuration.GetSection("TokenHashKey").Value;
             Shared.LoginTokenMaker = new TokenMaker<LoginToken>(tkey);
-
+            
             //静的ファイルを使用する
             app.UseStaticFiles();
         }

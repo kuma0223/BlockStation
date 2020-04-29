@@ -46,6 +46,7 @@ namespace BlockStation.Controllers
         [Route("login")]
         public ActionResult<string> Login_Post([FromBody] LoginBody data)
         {
+            logger.LogInformation("Call LOGIN");
             var info = GetUserInfo(data.id);
 
             //ユーザー情報チェック

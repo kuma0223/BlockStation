@@ -10,14 +10,16 @@ using Microsoft.Extensions.Logging;
 
 namespace BlockStation
 {
-    public class Program
-    {
+    public class Program {
         public static void Main(string[] args) {
             CreateWebHostBuilder(args).Build().Run();
         }
 
         public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
+                .ConfigureLogging(loggingBuilder => {
+                    loggingBuilder.AddProvider(new MyLoggerProvider());
+                })
                 .UseStartup<Startup>();
     }
 }

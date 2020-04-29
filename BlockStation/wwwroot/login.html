@@ -110,16 +110,8 @@
             account.setToken(res, keep);
 
             var prev = getPrevPage();
-            dialog.messagebox("ログインしました", dialog.Messagebox_Buttons_Ok);
+            //dialog.messagebox("ログインしました", dialog.Messagebox_Buttons_Ok);
             //location.href = "main.html";
-
-            account.ajax({
-                type: "GET",
-                url: "api/user/reload",
-                callback: function (e) {
-                    alert(e.response);
-                }
-            });
         }
 
         function formDisable(disable) {
