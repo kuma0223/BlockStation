@@ -3,8 +3,10 @@ using System.Security.Cryptography;
 using System.Text;
 
 /// <summary>
-/// URLセーフで署名付きのトークンを生成します。
+/// URLセーフで署名付きのJWTトークンを生成します。
 /// 署名にはHMAC-SHA256を利用し、文字列はBase64URLエンコードされます。
+/// トークンの生成およびチェックを行う場合はキーが必要です。
+/// 復元にはキーは使用されません。
 /// </summary>
 public class TokenMaker<T>
 {
@@ -24,28 +26,6 @@ public class TokenMaker<T>
     /// <summary>
     /// トークンを生成します。
     /// </summary>
-    /// <param name="json">JSONデータ文字列</param>
-    public string MakeTokenJson(string json)
-    {
-        string b64 = ToBase64url(json);
-        var hash = GetHash(b64);
-        return b64 + "." + hash;
-    }
-
-    /// <summary>
-    /// トークンからデータを復元します。
-    /// </summary>
-    /// <param name="token">トークン文字列</param>
-    /// <returns>JSONデータ文字列</returns>
-    public string AnalyseTokenJson(string token) {
-        var spl = token.Split('.');
-        var json = FromBase64url(spl[0]);
-        return json;
-    }
-
-    /// <summary>
-    /// トークンを生成します。
-    /// </summary>
     /// <param name="obj">データオブジェクト</param>
     public string MakeToken(T obj) {
         var json = JsonSilializer<T>.ToJson(obj);
@@ -53,13 +33,35 @@ public class TokenMaker<T>
     }
 
     /// <summary>
-    /// トークンからデータを復元します。
+    /// トークンを生成します。
+    /// </summary>
+    /// <param name="json">JSONデータ文字列</param>
+    private string MakeTokenJson(string json) {
+        string header = "{\"type\":\"JWT\",\"alg\":\"HS256\"}";
+        string b64 = $"{ToBase64url(header)}.{ToBase64url(json)}";
+        var hash = GetHash(b64);
+        return $"{b64}.{hash}";
+    }
+
+    /// <summary>
+    /// トークンを復元します。
     /// </summary>
     /// <param name="token">トークン文字列</param>
     /// <returns>データオブジェクト</returns>
     public T AnalyseToken(string token) {
         var json = AnalyseTokenJson(token);
         return JsonSilializer<T>.FromJson(json);
+    }
+
+    /// <summary>
+    /// トークンを復元します。
+    /// </summary>
+    /// <param name="token">トークン文字列</param>
+    /// <returns>JSONデータ文字列</returns>
+    private string AnalyseTokenJson(string token) {
+        var spl = token.Split('.');
+        var json = FromBase64url(spl[1]);
+        return json;
     }
 
     /// <summary>
@@ -71,10 +73,10 @@ public class TokenMaker<T>
     {
         if (token == null) return false;
         var spl = token.Split('.');
-        if (spl.Length != 2) return false;
+        if (spl.Length != 3) return false;
 
-        var hash = GetHash(spl[0]);
-        return hash == spl[1];
+        var hash = GetHash($"{spl[0]}.{spl[1]}");
+        return hash == spl[2];
     }
 
     /// <summary>
@@ -105,6 +107,7 @@ public class TokenMaker<T>
         code = code.Replace( '/', '_' );
         return code;
     }
+
     /// <summary>
     /// Base64URLをデコードします。
     /// </summary>

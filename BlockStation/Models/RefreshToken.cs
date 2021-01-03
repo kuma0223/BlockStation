@@ -5,7 +5,7 @@ using System.Runtime.Serialization;
 using System.Text;
 
 [DataContract]
-public class LoginToken
+public class RefreshToken
 {
     /// <summary>有効期間(通秒)</summary>
     [DataMember]
@@ -18,10 +18,6 @@ public class LoginToken
     /// <summary>アカウント名</summary>
     [DataMember]
     public string id = "";
-
-    /// <summary>ユーザーレベル</summary>
-    [DataMember]
-    public int level = 0;
 
     /// <summary>
     /// トークン作成日時

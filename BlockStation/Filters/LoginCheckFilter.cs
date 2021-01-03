@@ -16,7 +16,7 @@ namespace BlockStation.Filters
     /// </summary>
     public class LoginCheckFilter : IActionFilter
     {
-        private Regex regex = new Regex(@"Bearer\s+(.*)");
+        private static Regex regex = new Regex(@"Bearer\s+(.*)");
 
         public void OnActionExecuting(ActionExecutingContext actionContext) {
             var auth = actionContext.HttpContext.Request.Headers["Authorization"].ToString();
@@ -25,7 +25,7 @@ namespace BlockStation.Filters
             if (!mc.Success || !CheckToken(mc.Groups[1].Value)) {
                 //未認証 or 不正トークン
                 actionContext.Result = new ContentResult(){
-                    Content = "ログイン認証が必要です。",
+                    Content = "please login",
                     StatusCode = (int)HttpStatusCode.Unauthorized
                 };
             }
@@ -37,13 +37,18 @@ namespace BlockStation.Filters
 
         private bool CheckToken(string token) {
             if (token == null || token == "") return false;
-            if (!Shared.LoginTokenMaker.CheckToken(token)) return false;
-
-            //有効期限
-            var tokenbody = Shared.LoginTokenMaker.AnalyseToken(token);
-            if(tokenbody.ExpirationDate < DateTime.Now) {
+            
+            //改ざん検知
+            if (!Shared.LoginTokenMaker.CheckToken(token)){
                 return false;
             }
+            //有効期限
+            var tokenbody = Shared.LoginTokenMaker.AnalyseToken(token);
+            if(tokenbody.ExpirationTime < DateTime.Now) {
+                return false;
+            }
+            //無効トークン
+            //なし
 
             return true;
         }

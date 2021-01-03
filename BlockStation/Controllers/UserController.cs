@@ -1,42 +1,50 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using Microsoft.AspNetCore.Mvc;
+using System.Runtime.Serialization;
+using System.Threading.Tasks;
 using BlockStation.Filters;
-using BlockStation;
-using System.Net;
+using BlockStation.Models;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
 namespace BlockStation.Controllers
 {
     /// <summary>
-    /// ユーザー処理コントロール
+    /// ユーザー処理および認証のコントロール
     /// </summary>
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
     public class UserController : ControllerBase
     {
-        private static object updatelock = new object();
+        private readonly ILogger _logger;
         private static SQLiteAdapter con;
-        private ILogger logger;
 
         public UserController(ILogger<UserController> logger) {
-            this.logger = logger;
-            if(con == null) {
-                con = new SQLiteAdapter("Data Source=" + Shared.DBPath);
-                con.Open();
-            }
+            _logger = logger;
+            con = new SQLiteAdapter(Shared.DBPath);
+            con.Open();
         }
 
+        [HttpGet]
+        public ActionResult<string> Get() {
+            return "success";
+        }
+
+        [HttpGet]
+        [Route("filter")]
+        [ServiceFilter(typeof(LoginCheckFilter))]
+        public ActionResult<string> LoginFiltered() {
+            return "success";
+        }
+        
         /// <summary>
         /// ログイン要求
         /// </summary>
         [HttpGet]
         [Route("login")]
-        public ActionResult<string> Login_Get([FromQuery]string id, [FromQuery]string password) {
-            return Login_Post(new LoginBody() { id = id, password = password });
+        public ActionResult Login_Get([FromQuery]string id, [FromQuery]string password) {
+            return Login(new LoginRequest() { id = id, password = password });
         }
 
         /// <summary>
@@ -44,218 +52,154 @@ namespace BlockStation.Controllers
         /// </summary>
         [HttpPost]
         [Route("login")]
-        public ActionResult<string> Login_Post([FromBody] LoginBody data)
-        {
-            logger.LogInformation("Call LOGIN");
-            var info = GetUserInfo(data.id);
+        public ActionResult Login([FromBody] LoginRequest data) {
+            //logger.LogInformation("Call LOGIN");
 
-            //ユーザー情報チェック
-            if (info != null && info.CheckPassword(data.password)) {
-                //成功 トークンを作成して返す
-                var token = new LoginToken();
-                token.id = data.id;
-                token.level = info.level;
-                token.TimeValue = DateTime.Now;
-                token.expi = 24 * 60 * 60;
+            var info = con.SelectFirst<UserInfo>(
+                $"SELECT * FROM DT_USERS WHERE ID='{data.id}'");
 
-                string tokencode = Shared.LoginTokenMaker.MakeToken(token);
-                return Ok(tokencode);
+            if(info == null) {
+                return Unauthorized("Incorrect id.");
+            }
+
+            if (info.CheckPassword(data.password)) {
+                var res = MakeTokens(info);
+                return Ok(res);
             } else {
-                //失敗 401応答
-                var res = new ContentResult();
-                res.Content = "ユーザーID/パスワードが異なります";
-                res.StatusCode = (int)HttpStatusCode.Unauthorized;
-                return res;
+                return Unauthorized("Incorrect password.");
             }
         }
 
         /// <summary>
-        /// ログイントークンの更新
-        /// </summary>
-        [HttpGet]
-        [Route("reload")]
-        [ServiceFilter(typeof(LoginCheckFilter))]
-        public ActionResult Reload() {
-            //フィルタを通ってればOK
-            var auth = Request.Headers["Authorization"].ToString().Split(' ')[1];
-            var token = Shared.LoginTokenMaker.AnalyseToken(auth);
-            token.TimeValue = DateTime.Now;
-
-            return Ok(Shared.LoginTokenMaker.MakeToken(token));
-        }
-
-        /// <summary>
-        /// 新規登録
+        /// トークン再発行
         /// </summary>
         [HttpPost]
-        [Route("create")]
-        [ServiceFilter(typeof(LoginCheckFilter))]
-        public ActionResult Create([FromBody] CreateBody data)
-        {
-            if(!Regex.IsMatch(data.id, @"[a-zA-Z0-9]{4,}")) {
-                return BadRequest("英数字で4文字以上のIDを入力してください。");
-            }
-            if(!Regex.IsMatch(data.password, @"^[a-zA-Z0-9!#%&\(\)\*\+,\-\.\/;<=>\?@\[\]\^_\{|\}~]{4,}$")) {
-                return BadRequest("英数字で4文字以上のパスワードを入力してください。");
-            }
-            if(!Regex.IsMatch(data.mail, @"^[^@]+@[^@]+$")) {
-                return BadRequest("正しい形式のメールアドレスを入力してください。");
+        [Route("refresh")]
+        public ActionResult Refresh([FromBody] RefreshRequest data) {
+            //不正トークン
+            if (!Shared.RefreshTokenMaker.CheckToken(data.refreshToken)) {
+                return Unauthorized("Illegal token.");
             }
 
+            RefreshToken rtoken;
             try {
-                lock (updatelock) {
-                    //ダブりチェック
-                    if (GetUserInfo(data.id) != null) {
-                        return BadRequest("このIDは既に使用されています。");
-                    }
-                    //アカウント作成
-                    var info = new UserInfo();
-                    info.id = data.id;
-                    info.name = data.name;
-                    info.password = data.password;
-                    info.mail = data.mail;
-                    info.level = 1;
-                    info.create_time = DateTime.Now;
-                    CreateUser(info);
-                    return Ok();
-                }
-            }catch(Exception) {
-                var res = new ContentResult();
-                res.StatusCode = (int)HttpStatusCode.InternalServerError;
-                return res;
+                rtoken = Shared.RefreshTokenMaker.AnalyseToken(data.refreshToken);
+            }catch(Exception ex) {
+                return Unauthorized("Illegal token.");
             }
-        }
-        
-        /// <summary>
-        /// 情報更新
-        /// </summary>
-        [HttpPost]
-        [Route("update")]
-        [ServiceFilter(typeof(LoginCheckFilter))]
-        public ActionResult Update([FromBody] CreateBody data) {
-            var info = new UserInfo();
-            info.id = data.id;
-            info.name = data.name;
-            info.password = data.password;
-            info.mail = data.mail;
-            info.level = data.level;
 
-            try {
-                lock (updatelock) {
-                    UpdateUser(info);
-                }
-            } catch (Exception) {
-                return new BadRequestResult();
+            //期限切れ
+            if (rtoken.ExpirationTime < DateTime.Now) {
+                return Unauthorized("Token expired.");
             }
-            return Ok();
-        }
 
-        /// <summary>
-        /// ユーザー情報取得
-        /// </summary>
-        [HttpGet]
-        [Route("info")]
-        [ServiceFilter(typeof(LoginCheckFilter))]
-        public ActionResult UserInfo([FromQuery]string id) {
-            var info = GetUserInfo(id);
-            if (info == null) {
-                return new NotFoundResult();
+            //情報が更新されている
+            var info = con.SelectFirst<UserInfo>(
+                $"SELECT * FROM DT_USERS WHERE ID='{rtoken.id}'");
+
+            if (rtoken.IssuedAt < DateTime.MinValue) {
+                return Unauthorized("Token expired.");
             }
-            var ret = new InfoBody();
-            ret.id = info.id;
-            ret.name = info.name;
-            ret.mail = info.mail;
-            ret.level = info.level;
-            return Ok(ret);
+
+            return Ok(MakeTokens(info));
         }
 
-        /// <summary>
-        /// ユーザーリスト取得
-        /// </summary>
-        [HttpGet]
-        [Route("list")]
-        [ServiceFilter(typeof(LoginCheckFilter))]
-        public ActionResult UserList() {
-            var infos = GetUserInfo();
-            infos.Sort((x, y) => x.id.CompareTo(y.id));
+        private LoginResponse MakeTokens(UserInfo info) {
+            var res = new LoginResponse();
+            DateTime now = DateTime.Now;
 
-            var str = new StringBuilder();
-            foreach (var info in infos) {
-                if (str.Length > 0) str.Append(',');
-                str.Append("{");
-                str.Append($"\"id\":\"{info.id}\",");
-                str.Append($"\"name\":\"{info.name}\"");
-                str.Append("}");
-            }
-            var ret = new ContentResult();
-            ret.ContentType = "application/json";
-            ret.Content = "[" + str + "]";
-            ret.StatusCode = (int)HttpStatusCode.OK;
-            return ret;
+            var tokenL = new LoginToken();
+            tokenL.id = info.id;
+            tokenL.level = 0;
+            tokenL.IssuedAt = now;
+            tokenL.ExpirationTime = now.AddHours(1);
+            res.loginToken = Shared.LoginTokenMaker.MakeToken(tokenL);
+
+            var tokenR = new RefreshToken();
+            tokenR.id = info.id;
+            tokenR.IssuedAt = now;
+            tokenR.ExpirationTime = now.AddMonths(1);
+            res.refreshToken = Shared.RefreshTokenMaker.MakeToken(tokenR);
+
+            return res;
         }
 
-        /// <summary>
-        /// ユーザーレベル取得
-        /// </summary>
-        [HttpGet]
-        [Route("level")]
-        public ActionResult Level([FromQuery]string id) {
-            var info = GetUserInfo(id);
-            if (info == null) return NotFound();
-            return Ok(info == null ? 0 : info.level);
-        }
-
-        //◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
-        //DB Access
-        
-        private List<UserInfo> GetUserInfo() {
-            return con.SelectAll<UserInfo>("DT_USERS");
-        }
-        private UserInfo GetUserInfo(string id) {
-            return con.Select<UserInfo>("DT_USERS", $"ID='{id}'");
-        }
-        private bool CreateUser(UserInfo info) {
-            return con.Insert("DT_USERS", info);
-        }
-        private bool UpdateUser(UserInfo info) {
-            string sql = "";
-            Action<string, object> add = (name, value) => {
-                if(sql.Length > 0) sql += ",";
-                sql += name + "=" + con.ToSql(value);
-            };
-
-            if(info.level > 0)   add("LEVEL", info.level);
-            if(info.mail != null) add("MAIL",info.mail);
-            if(info.name != null) add("NAME",info.name);
-            if(info.pass_code != null) add("PASS_CODE", info.pass_code);
-            
-            if(sql.Length==0) return true; 
-
-            sql = "UPDATE DT_USERS SET " + sql + " WHERE ID=" + info.id;
-            return con.ExecuteNonQuery(sql) == 1;
-        }
-
-        //◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆
+        //------------------------------
         //Request/Response Body
-        public class LoginBody
+
+        public class LoginRequest
         {
-            public string id;
-            public string password;
+            public string id { get; set; }
+            public string password { get; set; }
         }
-        public class CreateBody
+        public class LoginResponse
         {
-            public string id;
-            public string password;
-            public string name;
-            public string mail;
-            public int level;
+            public string loginToken { get; set; }
+            public string refreshToken { get; set; }
         }
-        public class InfoBody
+        public class RefreshRequest
         {
-            public string id;
-            public string name;
-            public string mail;
-            public int level;
+            public string refreshToken { get; set; }
+        }
+
+        public class UserInfo
+        {
+            /// <summary>
+            /// ユーザーID
+            /// </summary>
+            [DataMember]
+            public string id { get; set; }
+
+            /// <summary>
+            /// 名前
+            /// </summary>
+            [DataMember]
+            public string name { get; set; }
+
+            /// <summary>
+            /// メアド
+            /// </summary>
+            [DataMember]
+            public string mail { get; set; }
+
+            /// <summary>
+            /// エンコードパスワード
+            /// </summary>
+            [DataMember]
+            public string pass_code { get; set; }
+
+            /// <summary>
+            /// 登録日
+            /// </summary>
+            [DataMember]
+            public DateTime create_time { get; set; }
+
+            /// <summary>
+            /// ユーザレベル
+            /// </summary>
+            [DataMember]
+            public int level { get; set; }
+
+            /// <summary>
+            /// パスワード平文
+            /// </summary>
+            public string password {
+                set { pass_code = ToPasscode(value); }
+            }
+
+            public bool CheckPassword(string password) {
+                var code = ToPasscode(password);
+                return code == pass_code;
+            }
+
+            private string ToPasscode(string value) {
+                if (value == null) value = "";
+                var sha = new System.Security.Cryptography.SHA256CryptoServiceProvider();
+                var bytes = sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(value));
+                var buil = new System.Text.StringBuilder(bytes.Length * 2);
+                foreach (var x in bytes) buil.Append(x.ToString("X2"));
+                return buil.ToString();
+            }
         }
     }
 }

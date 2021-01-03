@@ -80,7 +80,6 @@ public class MyLoggerProvider : ILoggerProvider
         }
     }
 
-
     private class MyLogger : ILogger
     {
         private MyLoggerProvider provider;

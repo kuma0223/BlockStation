@@ -22,5 +22,9 @@ namespace BlockStation
         /// </summary>
         public static TokenMaker<LoginToken> LoginTokenMaker { get; set; }
 
+        /// <summary>
+        /// リフレッシュトークン用メーカー
+        /// </summary>
+        public static TokenMaker<RefreshToken> RefreshTokenMaker { get; set; }
     }
 }

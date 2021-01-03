@@ -1,16 +1,18 @@
-ï»¿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
+using BlockStation.Filters;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using BlockStation.Filters;
 
 namespace BlockStation
 {
@@ -24,37 +26,44 @@ namespace BlockStation
 
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services) {
-            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
-            
-            //ãƒ•ã‚£ãƒ«ã‚¿ç™»éŒ²
+            services.AddControllers();
+
+            //ƒtƒBƒ‹ƒ^“o˜^
             services.AddScoped<LoginCheckFilter>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env) {
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env) {
             if (env.IsDevelopment()) {
                 app.UseDeveloperExceptionPage();
-            } else {
-                app.UseHsts();
             }
 
             app.UseHttpsRedirection();
-            app.UseMvc();
+            app.UseRouting();
+            //app.UseAuthorization();
 
-            //ã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³ãƒ«ãƒ¼ãƒˆãƒ‘ã‚¹
+            app.UseEndpoints(endpoints => {
+                endpoints.MapControllers();
+            });
+
+            //Ã“Iƒtƒ@ƒCƒ‹‚ğg—p‚·‚é
+            if (env.IsDevelopment()) {
+                app.UseStaticFiles();
+            }
+
+            //ƒAƒvƒŠƒP[ƒVƒ‡ƒ“ƒ‹[ƒgƒpƒX
             Shared.ContentRootPath = env.ContentRootPath;
-            
-            //è¨­å®šèª­ã¿è¾¼ã¿
+
+            ////İ’è“Ç‚İ‚İ
             Shared.DBPath = Configuration.GetSection("DBPath").Value;
             if (Shared.DBPath.StartsWith(".")) {
                 Shared.DBPath = Shared.ContentRootPath + "/" + Shared.DBPath;
             }
 
-            var tkey = Configuration.GetSection("TokenHashKey").Value;
+            //‹¤’Ê•”•i
+            var tkey = "abcdefg";//Configuration.GetSection("TokenHashKey").Value;
             Shared.LoginTokenMaker = new TokenMaker<LoginToken>(tkey);
-            
-            //é™çš„ãƒ•ã‚¡ã‚¤ãƒ«ã‚’ä½¿ç”¨ã™ã‚‹
-            app.UseStaticFiles();
+            Shared.RefreshTokenMaker = new TokenMaker<RefreshToken>(tkey);
         }
     }
 }

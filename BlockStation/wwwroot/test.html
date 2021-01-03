@@ -41,7 +41,9 @@
             <div>Response Code</div>
             <div id="status" style="background: white; width:300px;">&nbsp;</div>
             <div>Response Body</div>
-            <div id="response" style="background: white; width:600px; height: 20em"></div>
+            <div>
+                <textarea style="margin-top: 5px; height: 10em; width: 600px;" id="response"></textarea>
+            </div>
         </div>
     </div>
 
@@ -68,7 +70,7 @@
                 contentType: "application/json",
                 callback: function (event) {
                     document.getElementById("status").textContent = event.status;
-                    document.getElementById("response").textContent = event.response;
+                    document.getElementById("response").value = event.response;
                 }
             }
             ajax.ajax(param, JSON.parse(head=="" ? "{}" : head))
@@ -89,7 +91,7 @@
                 contentType: "application/json",
                 callback: function (event) {
                     document.getElementById("status").textContent = event.status;
-                    document.getElementById("response").textContent = event.response;
+                    document.getElementById("response").value = event.response;
                 }
             }
             ajax.ajax(param, JSON.parse(head=="" ? "{}" : head))
