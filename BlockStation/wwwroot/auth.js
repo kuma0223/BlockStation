@@ -1,4 +1,6 @@
 ﻿
+alert("abc");
+
 window.Auth = new function () {
     var me = this
     var keyL = "auth.login"
@@ -68,7 +70,7 @@ window.Auth = new function () {
         var callbackOrg = ("callback" in options) ? options.callback : function () { };
 
         //トークン切れ事前検知
-        //クライアントの時刻がおかしいときに変なリクエストになるのでやめ
+        //クライアントの時刻がおかしいときに変なリクエストになるのでやらない
         //let ltokenObj = detectToken(ltoken)
         //if (ltoken != null && ltokenObj.exp < (new Date().getTime() / 1000 - 60)) {
         //    refresh(refreshed)
@@ -95,7 +97,7 @@ window.Auth = new function () {
             let rtoken = getRefreshToken()
 
             if (event.status == 401 && rtoken != null) {
-                //トークン切れ
+                //トークン更新
                 refresh(refreshed)
             } else {
                 callbackOrg(event)
@@ -117,7 +119,7 @@ window.Auth = new function () {
         ajax({
             type: "POST",
             url: "/api/user/refresh",
-            data: rtoken,
+            data: { refreshToken: rtoken },
             timeout: 5000,
             callback: function(event){
                 if (event.success) {

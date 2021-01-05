@@ -112,7 +112,7 @@ namespace BlockStation.Controllers
             tokenL.id = info.id;
             tokenL.level = 0;
             tokenL.IssuedAt = now;
-            tokenL.ExpirationTime = now.AddHours(1);
+            tokenL.ExpirationTime = now.AddMinutes(1);
             res.loginToken = Shared.LoginTokenMaker.MakeToken(tokenL);
 
             var tokenR = new RefreshToken();

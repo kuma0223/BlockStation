@@ -3,13 +3,14 @@
 <head>
     <title>サービス呼び出しテスト用ページ</title>
     <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 
     <style type="text/css">
         html {
             background: linear-gradient(to bottom, #f5ffff, #90bced 100%);
             background-attachment: fixed;
         }
+
         * {
             font-family: Meiryo;
             font-size: 16px;
@@ -35,7 +36,7 @@
         <div style="margin-top: 5px;">
             <button onclick="GetClick()">GET</button>
             <button onclick="PostClick()">POST</button>
-            <button onclick="PutClick()">PUT</button>
+            <button onclick="LoginClick()">LOGIN</button>
         </div>
 
         <div style="margin-top: 10px;">
@@ -74,7 +75,8 @@
                     document.getElementById("response").value = event.response;
                 }
             }
-            ajax.ajax(param, JSON.parse(head=="" ? "{}" : head))
+            //ajax.ajax(param, JSON.parse(head=="" ? "{}" : head))
+            Auth.ajax(param)
         }
 
         function PostClick() {
@@ -95,7 +97,15 @@
                     document.getElementById("response").value = event.response;
                 }
             }
-            ajax.ajax(param, JSON.parse(head=="" ? "{}" : head))
+            //ajax.ajax(param, JSON.parse(head == "" ? "{}" : head))
+            Auth.ajax(param)
+        }
+
+        function LoginClick() {
+            Auth.login("root", "root", false, function (event) {
+                document.getElementById("status").textContent = event.status;
+                document.getElementById("response").value = event.response;
+            })
         }
 
         this.ajax = new function(){
