@@ -25,7 +25,7 @@ namespace BlockStation.Filters
             if (!mc.Success || !CheckToken(mc.Groups[1].Value)) {
                 //未認証 or 不正トークン
                 actionContext.Result = new ContentResult(){
-                    Content = "please login",
+                    Content = "Please login",
                     StatusCode = (int)HttpStatusCode.Unauthorized
                 };
             }
