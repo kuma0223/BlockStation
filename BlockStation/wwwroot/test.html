@@ -37,6 +37,7 @@
             <button onclick="GetClick()">GET</button>
             <button onclick="PostClick()">POST</button>
             <button onclick="LoginClick()">LOGIN</button>
+            <button onclick="LogoutClick()">LOGOUT</button>
         </div>
 
         <div style="margin-top: 10px;">
@@ -69,14 +70,11 @@
             var param = {
                 type: "GET",
                 url: url,
-                contentType: "application/json",
-                callback: function (event) {
-                    document.getElementById("status").textContent = event.status;
-                    document.getElementById("response").value = event.response;
-                }
             }
-            //ajax.ajax(param, JSON.parse(head=="" ? "{}" : head))
-            Auth.ajax(param)
+            Auth.ajax(param).then(event => {
+                document.getElementById("status").textContent = event.status;
+                document.getElementById("response").value = event.body;
+            })
         }
 
         function PostClick() {
@@ -88,24 +86,25 @@
             localStorage.setItem("headtext", head);
 
             var param = {
-                type: "POST",
-                data: JSON.parse(body),
+                method: "POST",
+                body: JSON.parse(body),
                 url: url,
-                contentType: "application/json",
-                callback: function (event) {
-                    document.getElementById("status").textContent = event.status;
-                    document.getElementById("response").value = event.response;
-                }
             }
-            //ajax.ajax(param, JSON.parse(head == "" ? "{}" : head))
-            Auth.ajax(param)
+            Auth.ajax(param).then(event => {
+                document.getElementById("status").textContent = event.status;
+                document.getElementById("response").value = event.body;
+            })
         }
 
         function LoginClick() {
-            Auth.login("root", "root", false, function (event) {
+            Auth.login("root", "root", false).then(event => {
                 document.getElementById("status").textContent = event.status;
-                document.getElementById("response").value = event.response;
+                document.getElementById("response").value = event.body;
             })
+        }
+
+        function LogoutClick() {
+            Auth.logout()
         }
 
         this.ajax = new function(){

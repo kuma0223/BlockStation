@@ -1,6 +1,4 @@
 ﻿
-alert("abc");
-
 window.Auth = new function () {
     var me = this
     var keyL = "auth.login"
@@ -9,7 +7,8 @@ window.Auth = new function () {
     //method
     this.ajax = ajaxWithAuth;
     this.login = login;
-    this.clear = clear;
+    this.logout = clear;
+    this.refresh = refresh;
 
     function getLoginToken() {
         let itm = localStorage.getItem(keyL)
@@ -42,7 +41,6 @@ window.Auth = new function () {
         return localStorage.getItem(keyR) != null
     }
 
-
     function detectToken(token) {
         if (token == null) return {};
 
@@ -60,13 +58,121 @@ window.Auth = new function () {
 
     function copyHash(org) {
         let ret = {}
-        Object.keys(org).forEach(function (key) {
-            ret[key] = org[key]
-        })
+        if (org) {
+            Object.keys(org).forEach(function (key) {
+                ret[key] = org[key]
+            })
+        }
         return ret;
     }
 
-    function ajaxWithAuth(options) {
+    async function ajaxWithAuth(options) {
+        //事前のトークン有効チェックはクライアント時刻に
+        //左右されるのでやらない
+
+        let ret = request(0)
+        return ret
+
+        async function request(retry) {
+            let opts = copyHash(options)
+            opts.headers = copyHash(options.headers)
+
+            let ltoken = getLoginToken()
+            if (ltoken != null) {
+                opts.headers['Authorization'] = 'Bearer ' + ltoken
+            }
+
+            let res = await ajax(opts)
+            let rtoken = getRefreshToken()
+
+            if (res.status == 401 && rtoken != null && retry < 1) {
+                //トークン切れ,更新して再リクエスト
+                let isRef = await refresh()
+                if (isRef) {
+                    return await request(retry + 1)
+                }
+            }
+            return res
+        }
+    }
+
+    async function refresh() {
+        let rtoken = getRefreshToken();
+        let res = await ajax({
+            url: "/api/user/refresh",
+            method: "POST",
+            body: { refreshToken: rtoken },
+        })
+
+        if (res.ok) {
+            let obj = JSON.parse(res.body)
+            let lt = obj["loginToken"]
+            let rt = obj["refreshToken"]
+            setToken(lt, rt, isKeep())
+        } else {
+            if (res > 0) {
+                //通信エラーのときはクリアしない
+                //(ログアウトしない)
+                clear()
+            }
+        }
+        return res.ok
+    }
+
+    async function login(id, password, keep) {
+        var res = await ajax({
+            method: "POST",
+            url: "/api/user/login",
+            body: { id: id, password: password },
+        })
+
+        if (res.ok) {
+            let obj = JSON.parse(res.body)
+            let lt = obj["loginToken"]
+            let rt = obj["refreshToken"]
+            setToken(lt, rt, keep)
+        } else {
+            clear()
+        }
+
+        return {
+            ok: res.ok,
+            status: res.status,
+        }
+    }
+
+    async function ajax(options) {
+        let init = {}
+        init.method = options.method || "GET"
+        init.headers = options.headers || {}
+        if ("body" in options) {
+            init.headers["Content-Type"] = "application/json;charset=UTF-8"
+            init.body = JSON.stringify(options.body)
+        }
+
+        try {
+            let res = await fetch(options.url, init)
+            let ret = {
+                ok: res.ok,
+                status: res.status,
+                statusText: res.statusText,
+            }
+            ret.body = await res.text()
+            return ret
+        } catch (ex) {
+            let ret = {
+                ok: false,
+                status: -1,
+                statusText: "" + ex,
+                body: "" + ex,
+            }
+            return ret
+        }
+    }
+
+
+    /*
+    function ajaxWithAuth_(options) {
         var callbackOrg = ("callback" in options) ? options.callback : function () { };
 
         //トークン切れ事前検知
@@ -113,7 +219,7 @@ window.Auth = new function () {
         }
     }
 
-    function refresh(callback) {
+    function refresh_(callback) {
         let rtoken = getRefreshToken();
 
         ajax({
@@ -135,7 +241,7 @@ window.Auth = new function () {
         })
     }
 
-    function login(id, password, keep, callback) {
+    function login_(id, password, keep, callback) {
         ajax({
             type: "POST",
             url: "/api/user/login",
@@ -146,7 +252,7 @@ window.Auth = new function () {
                     let obj = JSON.parse(event.response)
                     let lt = obj["loginToken"]
                     let rt = obj["refreshToken"]
-                    setToken(lt, rt, isKeep())
+                    setToken(lt, rt, keep)
                 } else {
                     clear()
                 }
@@ -155,7 +261,7 @@ window.Auth = new function () {
         })
     }
 
-    function ajax(options) {
+    function ajax_(options) {
         //type, url, headers, data, timeout, callback
         var op = options
         var req = new XMLHttpRequest();
@@ -216,4 +322,5 @@ window.Auth = new function () {
             }
         }
     }
+    */
 }
