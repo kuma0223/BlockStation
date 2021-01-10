@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using BlockStation.Filters;
 using BlockStation.Models;
@@ -19,6 +20,7 @@ namespace BlockStation.Controllers
     {
         private readonly ILogger _logger;
         private static SQLiteAdapter con;
+        private static Regex UserIdPattern = new Regex(@"[a-zA-Z\.@]+");
 
         public UserController(ILogger<UserController> logger) {
             _logger = logger;
@@ -54,6 +56,9 @@ namespace BlockStation.Controllers
         [Route("login")]
         public ActionResult Login([FromBody] LoginRequest data) {
             //logger.LogInformation("Call LOGIN");
+            if (!CheckIdChars(data.id)) {
+                return Unauthorized("Incorrect id.");
+            }
 
             var info = con.SelectFirst<UserInfo>(
                 $"SELECT * FROM DT_USERS WHERE ID='{data.id}'");
@@ -122,6 +127,11 @@ namespace BlockStation.Controllers
             res.refreshToken = Shared.RefreshTokenMaker.MakeToken(tokenR);
 
             return res;
+        }
+
+        private bool CheckIdChars(string id) {
+            if(id == null) return false;
+            return UserIdPattern.IsMatch(id);
         }
 
         //------------------------------

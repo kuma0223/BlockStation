@@ -1,15 +1,20 @@
-﻿
-window.Auth = new function () {
-    var me = this
-    var keyL = "auth.login"
-    var keyR = "auth.refresh"
+﻿window.Auth = new function () {
+    const me = this
+    const keyL = "auth.login"
+    const keyR = "auth.refresh"
 
-    //method
+    //methods
     this.ajax = ajaxWithAuth;
     this.login = login;
     this.logout = clear;
+    this.isKeep = isKeep;
     this.refresh = refresh;
+    this.detect = detect;
+    this.getAuthorizationHeader = function () {
+        return 'Bearer ' + getLoginToken();
+    }
 
+    //functions
     function getLoginToken() {
         let itm = localStorage.getItem(keyL)
         return (itm != null) ? itm : sessionStorage.getItem(keyL)
@@ -41,7 +46,22 @@ window.Auth = new function () {
         return localStorage.getItem(keyR) != null
     }
 
-    function detectToken(token) {
+    function copyHash(org) {
+        let ret = {}
+        if (!org) return ret
+
+        Object.keys(org).forEach(function (key) {
+            ret[key] = org[key]
+        })
+        return ret;
+    }
+
+    /**
+     * トークンを解析しペイロードを取得します。
+     * @param {any} token トークン
+     * @returns {object} ペイロード
+     */
+    function detect(token) {
         if (token == null) return {};
 
         let t = token.split(".");
@@ -56,21 +76,16 @@ window.Auth = new function () {
         return JSON.parse(t);
     }
 
-    function copyHash(org) {
-        let ret = {}
-        if (org) {
-            Object.keys(org).forEach(function (key) {
-                ret[key] = org[key]
-            })
-        }
-        return ret;
-    }
-
+    /**
+     * 認証付きのリクエストを送信します。
+     * @param {object} options リクエスト設定
+     * @returns {object} レスポンス情報
+     */
     async function ajaxWithAuth(options) {
         //事前のトークン有効チェックはクライアント時刻に
         //左右されるのでやらない
 
-        let ret = request(0)
+        let ret = await request(0)
         return ret
 
         async function request(retry) {
@@ -96,6 +111,10 @@ window.Auth = new function () {
         }
     }
 
+    /**
+     * トークンを更新します。
+     * @returns {boolean} 成否
+     */
     async function refresh() {
         let rtoken = getRefreshToken();
         let res = await ajax({
@@ -119,6 +138,13 @@ window.Auth = new function () {
         return res.ok
     }
 
+    /**
+     * ログインします。
+     * @param {string} id ユーザID
+     * @param {string} password パスワード
+     * @param {boolean} keep ログインを維持するか
+     * @returns {object} okとstatusを持つ連想配列
+     */
     async function login(id, password, keep) {
         var res = await ajax({
             method: "POST",
@@ -171,7 +197,7 @@ window.Auth = new function () {
     }
 
 
-    /*
+    /* XMLHttpRequest版
     function ajaxWithAuth_(options) {
         var callbackOrg = ("callback" in options) ? options.callback : function () { };
 
