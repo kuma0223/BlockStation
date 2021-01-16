@@ -55,7 +55,8 @@ namespace BlockStation.Controllers
         [HttpPost]
         [Route("login")]
         public ActionResult Login([FromBody] LoginRequest data) {
-            //logger.LogInformation("Call LOGIN");
+            _logger.LogInformation($"request login id={data.id}");
+
             if (!CheckIdChars(data.id)) {
                 return Unauthorized("Incorrect id.");
             }

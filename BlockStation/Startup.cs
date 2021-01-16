@@ -18,22 +18,34 @@ namespace BlockStation
 {
     public class Startup
     {
-        public Startup(IConfiguration configuration) {
-            Configuration = configuration;
-        }
+        IWebHostEnvironment _env;
 
         public IConfiguration Configuration { get; }
 
+        public Startup(IConfiguration configuration, IWebHostEnvironment env) {
+            Configuration = configuration;
+            _env = env;
+        }
+
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services) {
-            services.AddControllers();
 
-            //フィルタ登録
+            //フィルタ
             services.AddScoped<LoginCheckFilter>();
+
+            //コントローラ
+            if (_env.IsDevelopment()) {
+                //デバッグ時クロスドメイン許可フィルタ
+                services.AddControllers(options => {
+                    options.Filters.Add(typeof(AllowOriginFilter));
+                });
+            } else {
+                services.AddControllers();
+            }
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env) {
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILoggerFactory loggerFactory) {
             if (env.IsDevelopment()) {
                 app.UseDeveloperExceptionPage();
             }
@@ -54,14 +66,20 @@ namespace BlockStation
             //アプリケーションルートパス
             Shared.ContentRootPath = env.ContentRootPath;
 
-            ////設定読み込み
+            //設定読み込み
             Shared.DBPath = Configuration.GetSection("DBPath").Value;
             if (Shared.DBPath.StartsWith(".")) {
                 Shared.DBPath = Shared.ContentRootPath + "/" + Shared.DBPath;
             }
 
+            //ロガー
+            var logprov = new MyLoggerProvider(Configuration.GetSection("MyLogging"));
+            loggerFactory.AddProvider(logprov);
+
+            logprov.CreateLogger("App").LogInformation("Startup");
+
             //共通部品
-            var tkey = "abcdefg";//Configuration.GetSection("TokenHashKey").Value;
+            var tkey = Configuration.GetSection("TokenHashKey").Value;
             Shared.LoginTokenMaker = new TokenMaker<LoginToken>(tkey);
             Shared.RefreshTokenMaker = new TokenMaker<RefreshToken>(tkey);
         }
