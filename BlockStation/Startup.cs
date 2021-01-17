@@ -33,15 +33,13 @@ namespace BlockStation
             //フィルタ
             services.AddScoped<LoginCheckFilter>();
 
-            //コントローラ
+            //クロスドメイン許可
             if (_env.IsDevelopment()) {
-                //デバッグ時クロスドメイン許可フィルタ
-                services.AddControllers(options => {
-                    options.Filters.Add(typeof(AllowOriginFilter));
-                });
-            } else {
-                services.AddControllers();
+                services.AddCors();
             }
+
+            //コントローラ
+            services.AddControllers();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -54,14 +52,20 @@ namespace BlockStation
             app.UseRouting();
             //app.UseAuthorization();
 
+            if (env.IsDevelopment()) {
+                //静的ファイルを使用する
+                app.UseStaticFiles();
+                //クロスドメイン許可
+                app.UseCors(builder=>{
+                    builder.AllowAnyOrigin()
+                    .AllowAnyMethod()
+                    .AllowAnyHeader();
+                });
+            }
+
             app.UseEndpoints(endpoints => {
                 endpoints.MapControllers();
             });
-
-            //静的ファイルを使用する
-            if (env.IsDevelopment()) {
-                app.UseStaticFiles();
-            }
 
             //アプリケーションルートパス
             Shared.ContentRootPath = env.ContentRootPath;

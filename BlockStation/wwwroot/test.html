@@ -10,7 +10,6 @@
             background: linear-gradient(to bottom, #f5ffff, #90bced 100%);
             background-attachment: fixed;
         }
-
         * {
             font-family: Meiryo;
             font-size: 16px;
@@ -25,25 +24,31 @@
         <div>
             <input type="text" style="width: 600px;" id="urltext" value="api/" />
         </div>
-        <div>Header</div>
+        <div style="margin-top:10px;">Header</div>
         <div>
-            <textarea style="margin-top: 5px; height: 5em; width: 600px;" id="headtext"></textarea>
+            <textarea style="height: 5em; width: 600px;" id="headtext"></textarea>
         </div>
-        <div>Body</div>
+        <div style="margin-top:10px;">Body</div>
         <div>
-            <textarea style="margin-top: 5px; height: 10em; width: 600px;" id="bodytext"></textarea>
+            <textarea style="height: 10em; width: 600px;" id="bodytext"></textarea>
         </div>
         <div style="margin-top: 5px;">
             <button onclick="GetClick()">GET</button>
             <button onclick="PostClick()">POST</button>
+        </div>
+
+        <div style="margin-top:20px;">
+            <input type="text" style="width: 100px;" id="usertext" value="" placeholder="user" />
+            <input type="text" style="width: 100px;" id="passtext" value="" placeholder="password" />
             <button onclick="LoginClick()">LOGIN</button>
             <button onclick="LogoutClick()">LOGOUT</button>
         </div>
 
-        <div style="margin-top: 10px;">
+        <div style="margin-top: 20px;">
             <div>Response Code</div>
             <div id="status" style="background: white; width:300px;">&nbsp;</div>
-            <div>Response Body</div>
+
+            <div style="margin-top:10px;">Response Body</div>
             <div>
                 <textarea style="margin-top: 5px; height: 10em; width: 600px;" id="response"></textarea>
             </div>
@@ -97,9 +102,11 @@
         }
 
         function LoginClick() {
-            Auth.login("root", "root", false).then(event => {
+            var user = document.getElementById("usertext").value;
+            var pass = document.getElementById("passtext").value;
+
+            Auth.login(user, pass, false).then(event => {
                 document.getElementById("status").textContent = event.status;
-                document.getElementById("response").value = event.body;
             })
         }
 
