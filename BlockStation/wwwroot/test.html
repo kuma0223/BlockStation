@@ -4,6 +4,9 @@
     <title>サービス呼び出しテスト用ページ</title>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width" />
+
+    <script type="text/javascript" src="dialog.js"></script>
 
     <style type="text/css">
         html {
@@ -14,11 +17,79 @@
             font-family: Meiryo;
             font-size: 16px;
         }
+        body{
+        }
+
+
+        
+/* ダイアログ関係 */
+
+div#dialogScreen{
+    visibility:hidden;
+    position:fixed;
+    top:0; left:0;
+    width:100%; height:100%;
+    background: rgba(0,0,0,0.3);
+    opacity:0;
+    transition-property:opacity;
+    transition:0.3s ease;
+    z-index:10;
+}
+div#dialogScreen.on{
+    visibility:visible;
+    opacity:1;
+}
+
+div#dialogBank{
+}
+
+.dialog{
+    display:block;
+    visibility:hidden;
+    border:solid 1px gray;
+	background: #FCFCFC;
+    position:absolute;
+    margin-top: -10px;
+    top:50%; left:50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 5px 5px 5px rgba(0,0,0,0.3);
+    transition: 0.3s ease;
+    z-index:11;
+}
+.dialog.on{
+    margin-top: 0px;
+    visibility:visible;
+    animation: common-dialog-keyframe 0.3s ease 0s;
+}
+@keyframes common-dialog-keyframe{
+    0% { margin-top: -10px; }
+    100% { margin-top: 0px; }
+}
+
+.messagebox{
+}
+
+.messagebox .button{
+    display: inline-block;
+    user-select: none;
+    -ms-user-select: none;
+    cursor:pointer;
+    border-radius: 2px;
+    background: linear-gradient(to bottom, #e8eff7 0%,#d8dfe7 100%);
+    border: 1px solid gray;
+    border-color: darkgray darkgray dimgray darkgray;
+    margin: 0 20px;
+    width:100px;
+}
+.messagebox .button:active {
+    background: #EDEDFF;
+}
     </style>
     <script type="text/javascript" src="auth.js"></script>
 </head>
 
 <body>
+
     <div>
         <div>URL</div>
         <div>
@@ -64,7 +135,14 @@
             document.getElementById("headtext").value = localStorage.getItem("headtext");
         }
 
-        function GetClick() {
+        async function GetClick() {
+            
+            var isok = await Dialog.messageboxAsync("データの送信に失敗しました。\n通信状態を確認して再度行ってください。", Dialog.Messagebox_Buttons_OkCancel, Dialog.Messagebox_Icon_Warn)
+            //alert(isok);
+
+            return;
+
+
             var url = document.getElementById("urltext").value;
             var body = document.getElementById("bodytext").value;
             var head = document.getElementById("headtext").value;
