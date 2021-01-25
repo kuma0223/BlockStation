@@ -17,79 +17,13 @@
             font-family: Meiryo;
             font-size: 16px;
         }
-        body{
-        }
-
-
-        
-/* ダイアログ関係 */
-
-div#dialogScreen{
-    visibility:hidden;
-    position:fixed;
-    top:0; left:0;
-    width:100%; height:100%;
-    background: rgba(0,0,0,0.3);
-    opacity:0;
-    transition-property:opacity;
-    transition:0.3s ease;
-    z-index:10;
-}
-div#dialogScreen.on{
-    visibility:visible;
-    opacity:1;
-}
-
-div#dialogBank{
-}
-
-.dialog{
-    display:block;
-    visibility:hidden;
-    border:solid 1px gray;
-	background: #FCFCFC;
-    position:absolute;
-    margin-top: -10px;
-    top:50%; left:50%;
-    transform: translate(-50%, -50%);
-    box-shadow: 5px 5px 5px rgba(0,0,0,0.3);
-    transition: 0.3s ease;
-    z-index:11;
-}
-.dialog.on{
-    margin-top: 0px;
-    visibility:visible;
-    animation: common-dialog-keyframe 0.3s ease 0s;
-}
-@keyframes common-dialog-keyframe{
-    0% { margin-top: -10px; }
-    100% { margin-top: 0px; }
-}
-
-.messagebox{
-}
-
-.messagebox .button{
-    display: inline-block;
-    user-select: none;
-    -ms-user-select: none;
-    cursor:pointer;
-    border-radius: 2px;
-    background: linear-gradient(to bottom, #e8eff7 0%,#d8dfe7 100%);
-    border: 1px solid gray;
-    border-color: darkgray darkgray dimgray darkgray;
-    margin: 0 20px;
-    width:100px;
-}
-.messagebox .button:active {
-    background: #EDEDFF;
-}
     </style>
-    <script type="text/javascript" src="auth.js"></script>
+
+    <script type="text/javascript" src="__auth.js"></script>
+    <link rel="stylesheet" href="dialog.css" type="text/css" />
 </head>
 
 <body>
-
     <div>
         <div>URL</div>
         <div>
@@ -136,13 +70,6 @@ div#dialogBank{
         }
 
         async function GetClick() {
-            
-            var isok = await Dialog.messageboxAsync("データの送信に失敗しました。\n通信状態を確認して再度行ってください。", Dialog.Messagebox_Buttons_OkCancel, Dialog.Messagebox_Icon_Warn)
-            //alert(isok);
-
-            return;
-
-
             var url = document.getElementById("urltext").value;
             var body = document.getElementById("bodytext").value;
             var head = document.getElementById("headtext").value;
@@ -190,76 +117,6 @@ div#dialogBank{
 
         function LogoutClick() {
             Auth.logout()
-        }
-
-        this.ajax = new function(){
-            var DefaultParam = {
-                type: "", //指定必須 GET POSTなど
-                url:"",   //指定必須
-                data:{},
-                timeout:10000,
-                contentType:"application/x-www-form-urlencoded; charset=UTF-8",
-                callback:function(event){}
-            }
-
-            /**
-             * httpリクエストを送信し応答を取得します。
-             * パラメータはDefaultParamを参照してください。
-             */
-            this.ajax = function(param, exheader){
-                try{
-                    var req = new XMLHttpRequest();
-
-                    req.onload = onload;
-                    req.onerror = onerror;
-                    req.onabort = onabort;
-                    req.ontimeout = ontimeout;
-
-                    req.open(param.type, param.url);
-
-                    req.timeout = (param.timeout !== undefined ? param.timeout : DefaultParam.timeout);
-                    req.setRequestHeader("Content-Type",
-                        param.contentType!==undefined ? param.contentType : DefaultParam.contentType);
-
-                    if (exheader != undefined) {
-                        Object.keys(exheader).forEach(function (x) {
-                            req.setRequestHeader(x, exheader[x]);
-                        })
-                    }
-
-                    req.send(JSON.stringify(param.data!==undefined ? param.data : DefaultParam.data));
-                }catch(e){
-                    beCallback(false, "通信を開始できませんでした。" + e.message);
-                }
-                function onload(){
-                    if(req.status == 200){
-                        beCallback(true, "");
-                    }else{
-                        beCallback(false, "通信に失敗しました。" + req.status + "/" + req.statusText);
-                    }
-                }
-                function onerror(e){
-                    beCallback(false, "通信異常が発生しました。");
-                }
-                function onabort(){
-                    beCallback(false, "通信中に割り込みが発生しました。");
-                }
-                function ontimeout(){
-                    beCallback(false, "通信がタイムアウトしました。");
-                }
-
-                function beCallback(success, message){
-                    var callback = (param.callback !== undefined ? param.callback : DefaultParam.callback);
-                    var event = {
-                        success:success,
-                        response:req.response,
-                        contentType: req.getResponseHeader("content-type"),
-                        status:req.status,
-                        message:message
-                    };
-                    callback(event);
-                }
-            }
         }
     </script>
 </body>

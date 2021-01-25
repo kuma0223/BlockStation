@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -53,14 +54,18 @@ namespace BlockStation
             //app.UseAuthorization();
 
             if (env.IsDevelopment()) {
-                //静的ファイルを使用する
-                app.UseStaticFiles();
                 //クロスドメイン許可
                 app.UseCors(builder=>{
                     builder.AllowAnyOrigin()
                     .AllowAnyMethod()
                     .AllowAnyHeader();
                 });
+                //静的ファイルを使用する
+                app.UseStaticFiles();
+                //app.UseStaticFiles(new StaticFileOptions {
+                //    FileProvider = new PhysicalFileProvider($"{env.ContentRootPath}/../test-project/dist"),
+                //    RequestPath = ""
+                //});
             }
 
             app.UseEndpoints(endpoints => {
