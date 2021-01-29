@@ -17,9 +17,6 @@ namespace BlockStation
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
             Host.CreateDefaultBuilder(args)
-                //.ConfigureLogging(loggingBuilder => {
-                //    loggingBuilder.AddProvider(new MyLoggerProvider());
-                //})
                 .ConfigureWebHostDefaults(webBuilder => {
                     webBuilder.UseStartup<Startup>();
                 });

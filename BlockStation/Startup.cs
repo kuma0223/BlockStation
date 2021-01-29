@@ -30,14 +30,14 @@ namespace BlockStation
 
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services) {
-
-            //フィルタ
-            services.AddScoped<LoginCheckFilter>();
-
+            
             //クロスドメイン許可
             if (_env.IsDevelopment()) {
                 services.AddCors();
             }
+
+            //フィルタ
+            services.AddScoped<LoginCheckFilter>();
 
             //コントローラ
             services.AddControllers();
@@ -62,10 +62,6 @@ namespace BlockStation
                 });
                 //静的ファイルを使用する
                 app.UseStaticFiles();
-                //app.UseStaticFiles(new StaticFileOptions {
-                //    FileProvider = new PhysicalFileProvider($"{env.ContentRootPath}/../test-project/dist"),
-                //    RequestPath = ""
-                //});
             }
 
             app.UseEndpoints(endpoints => {
@@ -80,12 +76,15 @@ namespace BlockStation
             if (Shared.DBPath.StartsWith(".")) {
                 Shared.DBPath = Shared.ContentRootPath + "/" + Shared.DBPath;
             }
+            Shared.LoginTokenExp = (long)TimeSpan.Parse(Configuration.GetValue<string>("LoginTokenExp")).TotalSeconds;
+            Shared.RefreshTokenExp = (long)TimeSpan.Parse(Configuration.GetValue<string>("RefreshTokenExp")).TotalSeconds;
 
             //ロガー
-            var logprov = new MyLoggerProvider(Configuration.GetSection("MyLogging"));
+            var logprov = new MyLoggerProvider(Configuration.GetSection("MyLogging"), env.ContentRootPath);
             loggerFactory.AddProvider(logprov);
 
-            logprov.CreateLogger("App").LogInformation("Startup");
+            logprov.CreateLogger("App").LogInformation($"Startup {env.ApplicationName}");
+            logprov.CreateLogger("App").LogInformation(env.ContentRootPath);
 
             //共通部品
             var tkey = Configuration.GetSection("TokenHashKey").Value;

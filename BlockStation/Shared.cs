@@ -26,5 +26,17 @@ namespace BlockStation
         /// リフレッシュトークン用メーカー
         /// </summary>
         public static TokenMaker<RefreshToken> RefreshTokenMaker { get; set; }
+
+        /// <summary>
+        /// ログイントークン有効期限（秒）
+        /// 指定時はtimespan.parseのフォーマット
+        /// </summary>
+        public static long LoginTokenExp {get; set; }
+
+        /// <summary>
+        /// リフレッシュトークン有効期限（秒）
+        /// 指定時はtimespan.parseのフォーマット
+        /// </summary>
+        public static long RefreshTokenExp {get; set; }
     }
 }

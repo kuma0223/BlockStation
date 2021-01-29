@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.Serialization;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -110,21 +108,24 @@ namespace BlockStation.Controllers
             return Ok(MakeTokens(info));
         }
 
+        /// <summary>
+        /// ユーザー情報からトークンを生成
+        /// </summary>
         private LoginResponse MakeTokens(UserInfo info) {
             var res = new LoginResponse();
             DateTime now = DateTime.Now;
 
             var tokenL = new LoginToken();
             tokenL.id = info.id;
-            tokenL.level = 0;
+            tokenL.level = info.level;
             tokenL.IssuedAt = now;
-            tokenL.ExpirationTime = now.AddMinutes(1);
+            tokenL.ExpirationTime = now.AddSeconds(Shared.LoginTokenExp);
             res.loginToken = Shared.LoginTokenMaker.MakeToken(tokenL);
 
             var tokenR = new RefreshToken();
             tokenR.id = info.id;
             tokenR.IssuedAt = now;
-            tokenR.ExpirationTime = now.AddMonths(1);
+            tokenR.ExpirationTime = now.AddSeconds(Shared.RefreshTokenExp);
             res.refreshToken = Shared.RefreshTokenMaker.MakeToken(tokenR);
 
             return res;
@@ -168,22 +169,22 @@ namespace BlockStation.Controllers
             public string name { get; set; }
 
             /// <summary>
-            /// メアド
+            /// メールアドレス
             /// </summary>
             [DataMember]
             public string mail { get; set; }
 
             /// <summary>
-            /// エンコードパスワード
+            /// パスワードハッシュ値
             /// </summary>
             [DataMember]
             public string pass_code { get; set; }
 
             /// <summary>
-            /// 登録日
+            /// 更新日
             /// </summary>
             [DataMember]
-            public DateTime create_time { get; set; }
+            public DateTime update_time { get; set; }
 
             /// <summary>
             /// ユーザレベル

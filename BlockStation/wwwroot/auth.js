@@ -1,7 +1,8 @@
 ﻿window.Auth = new function () {
-    const me = this
+    //const me = this
     const keyL = "auth.login"
     const keyR = "auth.refresh"
+    const Setting = window.Setting
 
     //methods
     this.ajax = ajaxWithAuth;
@@ -9,10 +10,14 @@
     this.logout = clear;
     this.isKeep = isKeep;
     this.refresh = refresh;
-    this.detect = detect;
+    this.getLoginToken = getLoginToken;
+    this.getRefreshToken = getRefreshToken;
+    this.getAuthState = function(){
+        return detect(getLoginToken())
+    };
     this.getAuthorizationHeader = function () {
-        return 'Bearer ' + getLoginToken();
-    }
+        return 'Bearer ' + getLoginToken()
+    };
 
     //functions
     function getLoginToken() {
@@ -58,14 +63,15 @@
 
     /**
      * トークンを解析しペイロードを取得します。
+     * ログインしていない場合nullが返ります。
      * @param {any} token トークン
      * @returns {object} ペイロード
      */
     function detect(token) {
-        if (token == null) return {};
+        if (token == null) return null;
 
         let t = token.split(".");
-        if (t.Length < 3) return {};
+        if (t.Length < 3) return null;
         t = t[1];
 
         let pads = (4 - t.Length % 4) % 4;
@@ -78,6 +84,18 @@
 
     /**
      * 認証付きのリクエストを送信します。
+     * option {
+     *      url: 必須
+     *      method: 既定 "GET"
+     *      headers: 既定 {}
+     *      body: 既定 undefined
+     * }
+     * return {
+     *      ok: true|false
+     *      status: httpレスポンスコード
+     *      statusText:  httpレスポンスコード名
+     *      body: bodyテキスト
+     * }
      * @param {object} options リクエスト設定
      * @returns {object} レスポンス情報
      */
@@ -118,7 +136,7 @@
     async function refresh() {
         let rtoken = getRefreshToken();
         let res = await ajax({
-            url: "/api/user/refresh",
+            url: Setting.api+"user/refresh",
             method: "POST",
             body: { refreshToken: rtoken },
         })
@@ -148,7 +166,7 @@
     async function login(id, password, keep) {
         var res = await ajax({
             method: "POST",
-            url: "/api/user/login",
+            url: Setting.api+"user/login",
             body: { id: id, password: password },
         })
 
@@ -350,3 +368,5 @@
     }
     */
 }
+
+export const Auth = window.Auth

@@ -1,0 +1,78 @@
+/* ダイアログ関係 */
+
+#dialogScreen{
+    visibility:hidden;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background: rgba(0,0,0,0.3);
+    /*backdrop-filter: blur(2px);*/
+    opacity:0;
+    transition:0.3s ease;
+    transition-property:opacity;
+    /* transitionにvisibilityを含まないこと */
+    z-index:100;
+}
+#dialogScreen.on{
+    visibility:visible;
+    opacity:1;
+}
+
+/*
+#dialogBank{
+}
+*/
+
+.dialog{
+    display:block;
+    visibility:hidden;
+	background: #FCFCFC;
+    position:absolute;
+    margin-top: -10px;
+    top:50%;
+    left:50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 5px rgba(0,0,0,0.3);
+    transition: 0.3s ease;
+    z-index:101;
+}
+.dialog.on{
+    margin-top: 0px;
+    visibility:visible;
+    animation: dialog-keyframe 0.3s ease 0s;
+}
+@keyframes dialog-keyframe{
+    0% { margin-top: -10px; }
+    100% { margin-top: 0px; }
+}
+
+/*
+.messagebox{
+}
+*/
+
+.messageboxButton{
+    border: none;
+    border-left: 2px solid white;
+    border-radius: 0;
+    outline: none;
+    cursor:pointer;
+    text-align: center;
+    width: 100%;
+    height: 35px;
+    background: #e5e9e9;
+    color: #0a2549;
+}
+.messageboxButton:first-child{
+    border-left: none;
+}
+.messageboxButton:active, .messageboxButton:focus {
+    background: #f2f5f5;
+}
+
+@keyframes dialog-spin-keyframe{
+    0% { background-color: #FFFFFF; }
+    100% { background-color: #FFFFFF00; }
+}

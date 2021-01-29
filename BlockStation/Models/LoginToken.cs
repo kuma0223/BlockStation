@@ -1,8 +1,5 @@
-﻿using BlockStation.Models;
-using System;
-using System.IO;
+﻿using System;
 using System.Runtime.Serialization;
-using System.Text;
 
 [DataContract]
 public class LoginToken
